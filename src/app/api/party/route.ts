@@ -41,6 +41,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ id: party.id, code: party.code, name: party.name });
   } catch (error) {
     console.error("Create party error:", error);
-    return NextResponse.json({ error: "Failed to create party", detail: String(error) }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create party" }, { status: 500 });
   }
 }
