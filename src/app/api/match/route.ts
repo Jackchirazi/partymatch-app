@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { matchGuests } from "@/lib/anthropic";
 
+export const maxDuration = 60; // Allow up to 60 seconds for Claude API call
+
 export async function POST(req: NextRequest) {
   try {
     const { partyId, adminPassword } = await req.json();
