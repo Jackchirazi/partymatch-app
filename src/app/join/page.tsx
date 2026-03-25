@@ -26,9 +26,13 @@ export default function JoinPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      // Store party info in localStorage
       localStorage.setItem("partyId", data.id);
       localStorage.setItem("partyName", data.name);
+      if (data.settings) {
+        localStorage.setItem("partySettings", JSON.stringify(data.settings));
+      } else {
+        localStorage.removeItem("partySettings");
+      }
 
       router.push(`/party/${data.code}`);
     } catch (e) {
@@ -42,8 +46,8 @@ export default function JoinPage() {
     <main className="min-h-screen flex flex-col items-center justify-center p-6">
       <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm animate-fade-in">
         <div className="text-center mb-6">
-          <div className="text-4xl mb-2">🎉</div>
-          <h1 className="text-2xl font-bold text-rose-600">Join a Party</h1>
+          <div className="text-4xl mb-2 animate-float">🎉</div>
+          <h1 className="text-2xl font-black text-rose-600">Join a Party</h1>
           <p className="text-rose-400 text-sm mt-1">Enter the code from your host</p>
         </div>
 
@@ -54,7 +58,7 @@ export default function JoinPage() {
             onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
             placeholder="XKCD42"
             maxLength={6}
-            className="w-full border-2 border-rose-100 focus:border-rose-400 rounded-xl px-4 py-4 outline-none transition-all text-gray-700 text-center text-3xl font-bold tracking-widest placeholder-gray-200 uppercase"
+            className="w-full border-2 border-rose-100 focus:border-rose-400 rounded-xl px-4 py-4 outline-none transition-all text-gray-700 text-center text-3xl font-black tracking-widest placeholder-gray-200 uppercase"
             onKeyDown={(e) => e.key === "Enter" && handleJoin()}
             autoFocus
           />
@@ -66,9 +70,9 @@ export default function JoinPage() {
           <button
             onClick={handleJoin}
             disabled={loading || code.length < 6}
-            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold py-4 rounded-xl text-lg transition-all active:scale-95"
+            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-black py-4 rounded-xl text-lg transition-all active:scale-95"
           >
-            {loading ? "Joining..." : "Let's Go! 🚀"}
+            {loading ? "Joining..." : "Let's Go!"}
           </button>
         </div>
 

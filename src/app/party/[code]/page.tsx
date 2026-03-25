@@ -3,6 +3,7 @@
 import { useState, useRef, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { questions as defaultQuestions, type Question } from "@/lib/questions";
+import { defaultSettings, getTheme, type PartySettings } from "@/lib/themes";
 
 export default function QuestionnairePage({
   params,
@@ -20,12 +21,21 @@ export default function QuestionnairePage({
   const [error, setError] = useState("");
   const [step, setStep] = useState<"info" | "gender" | "questions">("info");
   const [questions, setQuestions] = useState<Question[]>(defaultQuestions);
+  const [settings, setSettings] = useState<PartySettings>(defaultSettings);
 
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
-  // Fetch custom questions if party has them
   useEffect(() => {
+    // Load party settings
+    const stored = localStorage.getItem("partySettings");
+    if (stored) {
+      try {
+        setSettings({ ...defaultSettings, ...JSON.parse(stored) });
+      } catch {}
+    }
+
+    // Fetch custom questions
     const partyId = localStorage.getItem("partyId");
     if (!partyId) return;
     fetch(`/api/admin/questions?partyId=${partyId}`)
@@ -33,6 +43,8 @@ export default function QuestionnairePage({
       .then((d) => { if (d.questions) setQuestions(d.questions); })
       .catch(() => {});
   }, []);
+
+  const theme = getTheme(settings.theme);
 
   function handleAnswer(questionId: string, value: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -99,9 +111,24 @@ export default function QuestionnairePage({
       <main className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm animate-fade-in">
           <div className="text-center mb-6">
-            <div className="text-4xl mb-2">🔥</div>
-            <h1 className="text-2xl font-bold text-rose-600">Welcome!</h1>
-            <p className="text-rose-400 text-sm mt-1">Let&apos;s set up your profile</p>
+            <div className="text-3xl mb-2 font-black" style={{ color: theme.primary }}>{settings.appName}</div>
+            <h1 className="text-2xl font-black text-gray-800">Welcome!</h1>
+            <p className="text-gray-400 text-sm mt-1">Set up your profile</p>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex items-center justify-center gap-3 mb-6">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="flex items-center gap-1">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-all"
+                  style={n === 1 ? { backgroundColor: theme.primary, color: "#fff" } : { backgroundColor: "#f1f5f9", color: "#94a3b8" }}
+                >
+                  {n}
+                </div>
+                {n < 3 && <div className="w-6 h-0.5 bg-gray-200" />}
+              </div>
+            ))}
           </div>
 
           <div className="space-y-5">
@@ -109,7 +136,8 @@ export default function QuestionnairePage({
             <div className="flex flex-col items-center">
               <button
                 onClick={() => galleryRef.current?.click()}
-                className="w-24 h-24 rounded-full bg-rose-50 border-2 border-dashed border-rose-200 flex items-center justify-center overflow-hidden transition-all hover:border-rose-400"
+                className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed flex items-center justify-center overflow-hidden transition-all"
+                style={{ borderColor: theme.border }}
               >
                 {photoUrl ? (
                   <img src={photoUrl} alt="You" className="w-full h-full object-cover" />
@@ -118,30 +146,40 @@ export default function QuestionnairePage({
                 )}
               </button>
 
-              {/* Hidden inputs */}
               <input ref={cameraRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhoto} />
               <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
 
               <div className="flex gap-3 mt-2">
-                <button onClick={() => cameraRef.current?.click()} className="text-xs text-rose-400 hover:text-rose-600 bg-rose-50 px-3 py-1 rounded-full">
-                  📷 Camera
+                <button
+                  onClick={() => cameraRef.current?.click()}
+                  className="text-xs font-semibold px-3 py-1 rounded-full transition-all"
+                  style={{ backgroundColor: theme.light, color: theme.text }}
+                >
+                  Camera
                 </button>
-                <button onClick={() => galleryRef.current?.click()} className="text-xs text-rose-400 hover:text-rose-600 bg-rose-50 px-3 py-1 rounded-full">
-                  🖼️ Gallery
+                <button
+                  onClick={() => galleryRef.current?.click()}
+                  className="text-xs font-semibold px-3 py-1 rounded-full transition-all"
+                  style={{ backgroundColor: theme.light, color: theme.text }}
+                >
+                  Gallery
                 </button>
               </div>
-              <p className="text-xs text-rose-300 mt-1">Optional</p>
+              <p className="text-xs text-gray-300 mt-1">Optional</p>
             </div>
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-rose-600 mb-1">Your Name *</label>
+              <label className="block text-sm font-semibold mb-1" style={{ color: theme.text }}>Your Name *</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="What do people call you?"
-                className="w-full border-2 border-rose-100 focus:border-rose-400 rounded-xl px-4 py-3 outline-none transition-all text-gray-700 placeholder-gray-300"
+                className="w-full border-2 rounded-xl px-4 py-3 outline-none transition-all text-gray-700 placeholder-gray-300"
+                style={{ borderColor: theme.border }}
+                onFocus={(e) => e.target.style.borderColor = theme.primary}
+                onBlur={(e) => e.target.style.borderColor = theme.border}
                 autoFocus
               />
             </div>
@@ -154,7 +192,8 @@ export default function QuestionnairePage({
                 setError("");
                 setStep("gender");
               }}
-              className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 rounded-xl text-lg transition-all active:scale-95"
+              className="w-full text-white font-black py-4 rounded-xl text-lg transition-all active:scale-95"
+              style={{ backgroundColor: theme.primary }}
             >
               Next →
             </button>
@@ -169,10 +208,24 @@ export default function QuestionnairePage({
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm animate-fade-in">
+          {/* Step indicator */}
+          <div className="flex items-center justify-center gap-3 mb-6">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="flex items-center gap-1">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-all"
+                  style={n <= 2 ? { backgroundColor: theme.primary, color: "#fff" } : { backgroundColor: "#f1f5f9", color: "#94a3b8" }}
+                >
+                  {n}
+                </div>
+                {n < 3 && <div className="w-6 h-0.5" style={n < 2 ? { backgroundColor: theme.primary } : { backgroundColor: "#e2e8f0" }} />}
+              </div>
+            ))}
+          </div>
+
           <div className="text-center mb-6">
-            <div className="text-4xl mb-2">✨</div>
-            <h1 className="text-2xl font-bold text-rose-600">One more thing</h1>
-            <p className="text-rose-400 text-sm mt-1">This helps us find your Secret Flame</p>
+            <h1 className="text-2xl font-black text-gray-800">One more thing</h1>
+            <p className="text-gray-400 text-sm mt-1">This helps us find your {settings.matchLabel}</p>
           </div>
 
           <div className="space-y-3 mb-6">
@@ -184,11 +237,12 @@ export default function QuestionnairePage({
               <button
                 key={opt.value}
                 onClick={() => setGender(opt.value as typeof gender)}
-                className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all text-base font-medium flex items-center gap-3 ${
+                className="w-full text-left px-5 py-4 rounded-xl border-2 transition-all text-base font-semibold flex items-center gap-3"
+                style={
                   gender === opt.value
-                    ? "border-rose-500 bg-rose-50 text-rose-700"
-                    : "border-gray-100 hover:border-rose-200 text-gray-600"
-                }`}
+                    ? { borderColor: theme.primary, backgroundColor: theme.light, color: theme.text }
+                    : { borderColor: "#f1f5f9", color: "#6b7280" }
+                }
               >
                 <span className="text-2xl">{opt.emoji}</span>
                 {opt.label}
@@ -197,17 +251,15 @@ export default function QuestionnairePage({
           </div>
 
           <button
-            onClick={() => {
-              if (!gender) { return; }
-              setStep("questions");
-            }}
+            onClick={() => { if (!gender) return; setStep("questions"); }}
             disabled={!gender}
-            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-bold py-4 rounded-xl text-lg transition-all active:scale-95"
+            className="w-full text-white font-black py-4 rounded-xl text-lg transition-all active:scale-95 disabled:opacity-40"
+            style={{ backgroundColor: theme.primary }}
           >
-            Let&apos;s Go! 🔥
+            Let&apos;s Go!
           </button>
 
-          <button onClick={() => setStep("info")} className="block w-full text-center text-rose-300 text-sm mt-3 hover:text-rose-400">
+          <button onClick={() => setStep("info")} className="block w-full text-center text-gray-300 text-sm mt-3 hover:text-gray-400">
             ← Back
           </button>
         </div>
@@ -219,23 +271,39 @@ export default function QuestionnairePage({
   return (
     <main className="min-h-screen p-4 pb-32">
       <div className="max-w-lg mx-auto">
-        <div className="text-center py-4 mb-2">
-          <h1 className="text-xl font-bold text-rose-600">{name}&apos;s Profile</h1>
-          <div className="flex items-center gap-2 justify-center mt-2">
-            <div className="flex-1 bg-rose-100 rounded-full h-2 max-w-xs">
-              <div
-                className="bg-rose-500 h-2 rounded-full transition-all"
-                style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
-              />
+        {/* Header with step indicator */}
+        <div className="bg-white rounded-2xl shadow p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-black text-gray-800">{name}&apos;s Profile</h1>
+              <p className="text-xs text-gray-400">{answeredCount} of {totalQuestions} answered</p>
             </div>
-            <span className="text-rose-400 text-sm">{answeredCount}/{totalQuestions}</span>
+            {/* Step indicator */}
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3].map((n) => (
+                <div
+                  key={n}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
+                  style={n <= 3 ? { backgroundColor: theme.primary, color: "#fff" } : { backgroundColor: "#f1f5f9", color: "#94a3b8" }}
+                >
+                  {n}
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="mt-3 bg-gray-100 rounded-full h-2">
+            <div
+              className="h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(answeredCount / totalQuestions) * 100}%`, backgroundColor: theme.primary }}
+            />
           </div>
         </div>
 
         <div className="space-y-4">
           {questions.map((q) => (
             <div key={q.id} className="bg-white rounded-2xl shadow p-5">
-              <p className="font-semibold text-gray-800 mb-3">{q.question}</p>
+              <p className="font-black text-gray-800 mb-3">{q.question}</p>
 
               {q.type === "choice" && q.options && (
                 <div className="space-y-2">
@@ -243,11 +311,12 @@ export default function QuestionnairePage({
                     <button
                       key={opt}
                       onClick={() => handleAnswer(q.id, opt)}
-                      className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all text-sm ${
+                      className="w-full text-left px-4 py-3 rounded-xl border-2 transition-all text-sm font-medium"
+                      style={
                         answers[q.id] === opt
-                          ? "border-rose-500 bg-rose-50 text-rose-700 font-medium"
-                          : "border-gray-100 hover:border-rose-200 text-gray-600"
-                      }`}
+                          ? { borderColor: theme.primary, backgroundColor: theme.light, color: theme.text }
+                          : { borderColor: "#f1f5f9", color: "#6b7280" }
+                      }
                     >
                       {opt}
                     </button>
@@ -261,7 +330,7 @@ export default function QuestionnairePage({
                   value={answers[q.id] || ""}
                   onChange={(e) => handleAnswer(q.id, e.target.value)}
                   placeholder={q.placeholder}
-                  className="w-full border-2 border-gray-100 focus:border-rose-400 rounded-xl px-4 py-3 outline-none transition-all text-gray-700 placeholder-gray-300 text-sm"
+                  className="w-full border-2 border-gray-100 focus:border-gray-300 rounded-xl px-4 py-3 outline-none transition-all text-gray-700 placeholder-gray-300 text-sm"
                 />
               )}
             </div>
@@ -269,18 +338,19 @@ export default function QuestionnairePage({
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur border-t border-rose-100">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur border-t border-gray-100">
         <div className="max-w-lg mx-auto">
           {error && <p className="text-red-500 text-sm text-center mb-2">{error}</p>}
           <button
             onClick={handleSubmit}
             disabled={loading || !allAnswered}
-            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl text-lg transition-all active:scale-95"
+            className="w-full text-white font-black py-4 rounded-xl text-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: theme.primary }}
           >
             {loading
               ? "Submitting..."
               : allAnswered
-              ? "Reveal My Secret Flame 🔥"
+              ? `Reveal My ${settings.matchLabel} 🔥`
               : `Answer ${totalQuestions - answeredCount} more question${totalQuestions - answeredCount !== 1 ? "s" : ""}...`}
           </button>
         </div>

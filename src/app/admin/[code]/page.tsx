@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use, useCallback } from "react";
 import { questions as defaultQuestions, type Question } from "@/lib/questions";
+import { themes, defaultSettings, type PartySettings, type ThemeKey } from "@/lib/themes";
 import Link from "next/link";
 
 type Guest = {
@@ -21,6 +22,7 @@ type PartyInfo = {
   code: string;
   matchingDone: boolean;
   customQuestions: string | null;
+  settings: PartySettings | null;
 };
 
 export default function AdminPage({
@@ -43,7 +45,12 @@ export default function AdminPage({
   const [matchSuccess, setMatchSuccess] = useState("");
   const [expandedGuest, setExpandedGuest] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"guests" | "questions">("guests");
+  const [activeTab, setActiveTab] = useState<"guests" | "questions" | "settings">("guests");
+
+  // Settings state
+  const [partySettings, setPartySettings] = useState<PartySettings>(defaultSettings);
+  const [settingsDirty, setSettingsDirty] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // Question editor state
   const [questions, setQuestions] = useState<Question[]>(defaultQuestions);
@@ -67,6 +74,9 @@ export default function AdminPage({
       setGuests(data.guests);
       if (data.party.customQuestions) {
         setQuestions(JSON.parse(data.party.customQuestions));
+      }
+      if (data.party.settings) {
+        setPartySettings({ ...defaultSettings, ...data.party.settings });
       }
     } catch {
       setPassword("");
@@ -273,6 +283,21 @@ export default function AdminPage({
     ));
   }
 
+  async function saveSettings() {
+    if (!party) return;
+    setSavingSettings(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partyId: party.id, adminPassword: password, settings: partySettings }),
+      });
+      if (res.ok) setSettingsDirty(false);
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
   function getMatchedGuest(matchedWith: string | null): Guest | undefined {
     if (!matchedWith) return undefined;
     const ids = matchedWith.split(",");
@@ -387,15 +412,21 @@ export default function AdminPage({
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setActiveTab("guests")}
-            className={`flex-1 py-3 rounded-xl font-semibold transition-all ${activeTab === "guests" ? "bg-rose-500 text-white" : "bg-white text-rose-400 hover:bg-rose-50"}`}
+            className={`flex-1 py-3 rounded-xl font-bold transition-all text-sm ${activeTab === "guests" ? "bg-rose-500 text-white" : "bg-white text-rose-400 hover:bg-rose-50"}`}
           >
-            👥 Guests ({guests.length})
+            Guests ({guests.length})
           </button>
           <button
             onClick={() => setActiveTab("questions")}
-            className={`flex-1 py-3 rounded-xl font-semibold transition-all ${activeTab === "questions" ? "bg-rose-500 text-white" : "bg-white text-rose-400 hover:bg-rose-50"}`}
+            className={`flex-1 py-3 rounded-xl font-bold transition-all text-sm ${activeTab === "questions" ? "bg-rose-500 text-white" : "bg-white text-rose-400 hover:bg-rose-50"}`}
           >
-            ❓ Questions {questionsDirty ? "●" : ""}
+            Questions {questionsDirty ? "●" : ""}
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`flex-1 py-3 rounded-xl font-bold transition-all text-sm ${activeTab === "settings" ? "bg-rose-500 text-white" : "bg-white text-rose-400 hover:bg-rose-50"}`}
+          >
+            Settings {settingsDirty ? "●" : ""}
           </button>
         </div>
 
@@ -633,6 +664,85 @@ export default function AdminPage({
             >
               + Add Question
             </button>
+          </div>
+        )}
+
+        {/* SETTINGS TAB */}
+        {activeTab === "settings" && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl shadow p-5 space-y-4">
+              <h3 className="font-bold text-rose-600 text-lg">Party Branding</h3>
+
+              <div>
+                <label className="block text-sm font-semibold text-rose-600 mb-1">App Name</label>
+                <input
+                  type="text"
+                  value={partySettings.appName}
+                  onChange={(e) => { setPartySettings((s) => ({ ...s, appName: e.target.value })); setSettingsDirty(true); }}
+                  placeholder="Party Match"
+                  className="w-full border-2 border-rose-100 focus:border-rose-400 rounded-xl px-4 py-3 outline-none text-gray-700 placeholder-gray-300"
+                />
+                <p className="text-xs text-rose-300 mt-1">Shown to guests at the top of their questionnaire</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-rose-600 mb-1">Tagline</label>
+                <input
+                  type="text"
+                  value={partySettings.tagline}
+                  onChange={(e) => { setPartySettings((s) => ({ ...s, tagline: e.target.value })); setSettingsDirty(true); }}
+                  placeholder="Find your perfect match tonight!"
+                  className="w-full border-2 border-rose-100 focus:border-rose-400 rounded-xl px-4 py-3 outline-none text-gray-700 placeholder-gray-300"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-rose-600 mb-1">Match Label</label>
+                <input
+                  type="text"
+                  value={partySettings.matchLabel}
+                  onChange={(e) => { setPartySettings((s) => ({ ...s, matchLabel: e.target.value })); setSettingsDirty(true); }}
+                  placeholder="Secret Flame"
+                  className="w-full border-2 border-rose-100 focus:border-rose-400 rounded-xl px-4 py-3 outline-none text-gray-700 placeholder-gray-300"
+                />
+                <p className="text-xs text-rose-300 mt-1">What you call the match reveal — e.g. &quot;Secret Flame&quot;, &quot;Secret Target&quot;, &quot;Mystery Buddy&quot;</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow p-5">
+              <h3 className="font-bold text-rose-600 text-lg mb-3">Color Theme</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {(Object.entries(themes) as [ThemeKey, typeof themes[ThemeKey]][]).map(([key, t]) => (
+                  <button
+                    key={key}
+                    onClick={() => { setPartySettings((s) => ({ ...s, theme: key })); setSettingsDirty(true); }}
+                    className="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all"
+                    style={
+                      partySettings.theme === key
+                        ? { borderColor: t.primary, backgroundColor: t.light }
+                        : { borderColor: "#f1f5f9" }
+                    }
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl" style={{ backgroundColor: t.primary }}>
+                      {t.emoji}
+                    </div>
+                    <span className="text-xs font-bold text-gray-600">{t.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={saveSettings}
+              disabled={!settingsDirty || savingSettings}
+              className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-bold py-4 rounded-xl transition-all"
+            >
+              {savingSettings ? "Saving..." : settingsDirty ? "Save Settings" : "Settings Saved ✓"}
+            </button>
+
+            <p className="text-xs text-rose-300 text-center">
+              Settings apply to new guests joining — tell existing guests to refresh if needed
+            </p>
           </div>
         )}
       </div>

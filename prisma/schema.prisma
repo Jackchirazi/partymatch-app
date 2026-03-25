@@ -14,6 +14,7 @@ model Party {
   adminPassword   String
   matchingDone    Boolean  @default(false)
   customQuestions String?
+  settings        String?
   createdAt       DateTime @default(now())
   guests          Guest[]
 }

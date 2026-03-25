@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { defaultSettings, getTheme, type PartySettings } from "@/lib/themes";
 
 type MatchData = {
   matched: true;
@@ -18,10 +19,18 @@ export default function MatchPage({
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [showReveal, setShowReveal] = useState(false);
   const [guestName, setGuestName] = useState("");
+  const [settings, setSettings] = useState<PartySettings>(defaultSettings);
 
   useEffect(() => {
     const name = localStorage.getItem("guestName") || "You";
     setGuestName(name);
+
+    const stored = localStorage.getItem("partySettings");
+    if (stored) {
+      try {
+        setSettings({ ...defaultSettings, ...JSON.parse(stored) });
+      } catch {}
+    }
 
     const guestId = localStorage.getItem("guestId");
     if (!guestId) return;
@@ -38,7 +47,9 @@ export default function MatchPage({
           setTimeout(() => {
             setShowReveal(true);
             import("canvas-confetti").then(({ default: confetti }) => {
-              confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ["#f43f5e", "#fb7185", "#fda4af", "#ff69b4", "#ff4500", "#fff"] });
+              confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ["#f43f5e", "#a855f7", "#3b82f6", "#fbbf24", "#34d399", "#fff"] });
+              setTimeout(() => confetti({ particleCount: 100, spread: 60, origin: { y: 0.3 }, angle: 60 }), 500);
+              setTimeout(() => confetti({ particleCount: 100, spread: 60, origin: { y: 0.3 }, angle: 120 }), 500);
             });
           }, 300);
         } else {
@@ -53,19 +64,21 @@ export default function MatchPage({
     return () => clearTimeout(timeoutId);
   }, []);
 
+  const theme = getTheme(settings.theme);
+  const { matchLabel } = settings;
+
   if (!matchData || !matchData.matched) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="text-center animate-fade-in">
-          <div className="text-7xl mb-6 animate-bounce-soft">🔥</div>
-          <h1 className="text-2xl font-bold text-rose-600 mb-2">You&apos;re in!</h1>
-          <p className="text-rose-400 text-lg mb-2">Hey {guestName}! 👋</p>
-          <p className="text-rose-400">The sparks are still flying...</p>
-          <p className="text-rose-300 text-sm mt-2">Keep this page open — your Secret Flame will appear here!</p>
+          <div className="text-7xl mb-6 animate-float">🎉</div>
+          <h1 className="text-2xl font-black mb-2" style={{ color: theme.text }}>You&apos;re in, {guestName}!</h1>
+          <p className="text-gray-500 text-lg mb-2">Waiting for the host to reveal matches...</p>
+          <p className="text-gray-400 text-sm">Your {matchLabel} will appear here</p>
           <div className="mt-8 flex gap-2 justify-center">
-            <div className="w-3 h-3 bg-rose-300 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <div className="w-3 h-3 bg-rose-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <div className="w-3 h-3 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: theme.textLight, animationDelay: "0ms" }} />
+            <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: theme.primary, animationDelay: "150ms" }} />
+            <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: theme.text, animationDelay: "300ms" }} />
           </div>
         </div>
       </main>
@@ -79,11 +92,11 @@ export default function MatchPage({
     <main className="min-h-screen flex flex-col items-center justify-center p-6">
       {showReveal && (
         <div className="text-center animate-pop">
-          <div className="text-5xl mb-2">🔥</div>
-          <h1 className="text-3xl font-bold text-rose-600 mb-1">
-            {isTrio ? "Your Secret Flames are..." : "Your Secret Flame is..."}
+          <div className="text-5xl mb-2 animate-float">🔥</div>
+          <h1 className="text-3xl font-black mb-1" style={{ color: theme.text }}>
+            {isTrio ? `Your ${matchLabel}s are...` : `Your ${matchLabel} is...`}
           </h1>
-          <p className="text-rose-400 mb-6">Hey {guestName}!</p>
+          <p className="text-gray-400 mb-6">Hey {guestName}!</p>
 
           {matchedPeople.map((person) => (
             <div key={person.id} className="bg-white rounded-3xl shadow-xl p-6 mb-4 w-full max-w-xs mx-auto">
@@ -91,28 +104,32 @@ export default function MatchPage({
                 <img
                   src={person.photoUrl}
                   alt={person.name}
-                  className="w-28 h-28 rounded-full object-cover mx-auto mb-3 border-4 border-rose-200"
+                  className="w-28 h-28 rounded-full object-cover mx-auto mb-3 border-4"
+                  style={{ borderColor: theme.border }}
                 />
               ) : (
-                <div className="w-28 h-28 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-3 border-4 border-rose-200">
-                  <span className="text-5xl">{person.name.charAt(0).toUpperCase()}</span>
+                <div
+                  className="w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-3 border-4"
+                  style={{ backgroundColor: theme.lighter, borderColor: theme.border }}
+                >
+                  <span className="text-5xl font-black" style={{ color: theme.text }}>{person.name.charAt(0).toUpperCase()}</span>
                 </div>
               )}
-              <h2 className="text-2xl font-bold text-gray-800">{person.name}</h2>
+              <h2 className="text-2xl font-black text-gray-800">{person.name}</h2>
             </div>
           ))}
 
           {matchData.matchNote && (
-            <div className="bg-rose-50 rounded-2xl p-4 mt-2 max-w-xs mx-auto">
-              <p className="text-rose-600 text-sm italic">✨ {matchData.matchNote}</p>
+            <div className="rounded-2xl p-4 mt-2 max-w-xs mx-auto" style={{ backgroundColor: theme.light }}>
+              <p className="text-sm italic" style={{ color: theme.text }}>✨ {matchData.matchNote}</p>
             </div>
           )}
 
-          <p className="text-rose-400 mt-6 text-lg font-medium animate-bounce-soft">
-            Go find your flame! 🔥
+          <p className="mt-6 text-xl font-black animate-bounce-soft" style={{ color: theme.primary }}>
+            Go find them! 🔥
           </p>
 
-          <Link href="/" className="block mt-6 text-rose-300 text-sm hover:text-rose-400">
+          <Link href="/" className="block mt-6 text-gray-300 text-sm hover:text-gray-400">
             Back to home
           </Link>
         </div>
@@ -120,8 +137,8 @@ export default function MatchPage({
 
       {!showReveal && matchData.matched && (
         <div className="text-center">
-          <div className="text-6xl animate-bounce-soft">🔥</div>
-          <p className="text-rose-400 mt-4">Drumroll please...</p>
+          <div className="text-6xl animate-bounce-soft">🎊</div>
+          <p className="text-gray-400 mt-4 font-semibold">Drumroll please...</p>
         </div>
       )}
     </main>

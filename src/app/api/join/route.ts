@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Party not found. Check your code!" }, { status: 404 });
     }
 
-    return NextResponse.json({ id: party.id, name: party.name, code: party.code });
+    const settings = party.settings ? JSON.parse(party.settings) : null;
+    return NextResponse.json({ id: party.id, name: party.name, code: party.code, settings });
   } catch (error) {
     console.error("Join party error:", error);
     return NextResponse.json({ error: "Failed to join party" }, { status: 500 });

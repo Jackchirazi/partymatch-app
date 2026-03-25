@@ -46,32 +46,32 @@ export default function HostPage() {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm text-center animate-pop">
-          <div className="text-5xl mb-4">🎉</div>
-          <h1 className="text-2xl font-bold text-rose-600 mb-1">Party Created!</h1>
-          <p className="text-rose-400 mb-6">{result.name}</p>
+          <div className="text-5xl mb-4 animate-float">🎉</div>
+          <h1 className="text-2xl font-black text-rose-600 mb-1">Party Created!</h1>
+          <p className="text-rose-400 mb-6 font-medium">{result.name}</p>
 
           <div className="bg-rose-50 rounded-2xl p-6 mb-6">
             <p className="text-sm text-rose-400 mb-2">Your party code</p>
-            <div className="text-5xl font-bold text-rose-600 tracking-widest">{result.code}</div>
-            <p className="text-xs text-rose-300 mt-2">Tell everyone to enter this code!</p>
+            <div className="text-5xl font-black text-rose-600 tracking-widest">{result.code}</div>
+            <p className="text-xs text-rose-300 mt-2">Tell everyone to enter this code</p>
           </div>
 
           <button
             onClick={copyLink}
-            className="w-full bg-rose-100 hover:bg-rose-200 text-rose-600 font-semibold py-3 px-6 rounded-xl mb-4 transition-all"
+            className="w-full bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-3 px-6 rounded-xl mb-4 transition-all"
           >
-            {copied ? "✓ Copied!" : "📋 Copy Join Link"}
+            {copied ? "Copied!" : "Copy Join Link"}
           </button>
 
           <Link
             href={`/admin/${result.code}`}
-            className="block w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-6 rounded-xl transition-all"
+            className="block w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-3 px-6 rounded-xl transition-all"
           >
-            🖥️ Open Admin Dashboard
+            Open Admin Dashboard
           </Link>
 
           <p className="text-xs text-rose-300 mt-4">
-            Save your password: you&apos;ll need it on the admin page
+            Save your password — you&apos;ll need it on the admin page
           </p>
         </div>
       </main>
@@ -82,27 +82,27 @@ export default function HostPage() {
     <main className="min-h-screen flex flex-col items-center justify-center p-6">
       <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm animate-fade-in">
         <div className="text-center mb-6">
-          <div className="text-4xl mb-2">🎂</div>
-          <h1 className="text-2xl font-bold text-rose-600">Host a Party</h1>
+          <div className="text-4xl mb-2 animate-float">🎂</div>
+          <h1 className="text-2xl font-black text-rose-600">Host a Party</h1>
           <p className="text-rose-400 text-sm mt-1">Set up your matchmaking event</p>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-rose-600 mb-1">
+            <label className="block text-sm font-semibold text-rose-600 mb-1">
               Party Name
             </label>
             <input
               type="text"
               value={partyName}
               onChange={(e) => setPartyName(e.target.value)}
-              placeholder="e.g. Sarah's 25th Birthday 🎉"
+              placeholder="e.g. Sarah's 25th Birthday"
               className="w-full border-2 border-rose-100 focus:border-rose-400 rounded-xl px-4 py-3 outline-none transition-all text-gray-700 placeholder-gray-300"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-rose-600 mb-1">
+            <label className="block text-sm font-semibold text-rose-600 mb-1">
               Admin Password
             </label>
             <input
@@ -122,9 +122,9 @@ export default function HostPage() {
           <button
             onClick={handleCreate}
             disabled={loading}
-            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold py-4 rounded-xl text-lg transition-all active:scale-95"
+            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-black py-4 rounded-xl text-lg transition-all active:scale-95"
           >
-            {loading ? "Creating..." : "Create Party ✨"}
+            {loading ? "Creating..." : "Create Party"}
           </button>
         </div>
 
