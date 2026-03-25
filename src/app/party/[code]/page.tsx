@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, use } from "react";
+import { useState, useRef, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { questions } from "@/lib/questions";
+import { questions as defaultQuestions, type Question } from "@/lib/questions";
 
 export default function QuestionnairePage({
   params,
@@ -13,12 +13,26 @@ export default function QuestionnairePage({
   const router = useRouter();
 
   const [name, setName] = useState("");
+  const [gender, setGender] = useState<"male" | "female" | "other" | "">("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [step, setStep] = useState<"info" | "questions">("info");
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState<"info" | "gender" | "questions">("info");
+  const [questions, setQuestions] = useState<Question[]>(defaultQuestions);
+
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  // Fetch custom questions if party has them
+  useEffect(() => {
+    const partyId = localStorage.getItem("partyId");
+    if (!partyId) return;
+    fetch(`/api/admin/questions?partyId=${partyId}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.questions) setQuestions(d.questions); })
+      .catch(() => {});
+  }, []);
 
   function handleAnswer(questionId: string, value: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -29,7 +43,6 @@ export default function QuestionnairePage({
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      // Resize to ~200px wide using a canvas
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
@@ -51,10 +64,6 @@ export default function QuestionnairePage({
   const allAnswered = answeredCount === totalQuestions;
 
   async function handleSubmit() {
-    if (!name.trim()) {
-      setError("Tell us your name!");
-      return;
-    }
     if (!allAnswered) {
       setError(`Answer all questions first! (${answeredCount}/${totalQuestions} done)`);
       return;
@@ -64,21 +73,18 @@ export default function QuestionnairePage({
     setError("");
     try {
       const partyId = localStorage.getItem("partyId");
-      if (!partyId) {
-        throw new Error("Party not found. Go back and re-enter the code.");
-      }
+      if (!partyId) throw new Error("Party not found. Go back and re-enter the code.");
 
       const res = await fetch("/api/guest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ partyId, name: name.trim(), photoUrl, answers }),
+        body: JSON.stringify({ partyId, name: name.trim(), gender, photoUrl, answers }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
       localStorage.setItem("guestId", data.id);
       localStorage.setItem("guestName", data.name);
-
       router.push(`/party/${code}/match`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -87,12 +93,13 @@ export default function QuestionnairePage({
     }
   }
 
+  // Step 1: Name + Photo
   if (step === "info") {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm animate-fade-in">
           <div className="text-center mb-6">
-            <div className="text-4xl mb-2">✨</div>
+            <div className="text-4xl mb-2">🔥</div>
             <h1 className="text-2xl font-bold text-rose-600">Welcome!</h1>
             <p className="text-rose-400 text-sm mt-1">Let&apos;s set up your profile</p>
           </div>
@@ -101,7 +108,7 @@ export default function QuestionnairePage({
             {/* Photo upload */}
             <div className="flex flex-col items-center">
               <button
-                onClick={() => fileRef.current?.click()}
+                onClick={() => galleryRef.current?.click()}
                 className="w-24 h-24 rounded-full bg-rose-50 border-2 border-dashed border-rose-200 flex items-center justify-center overflow-hidden transition-all hover:border-rose-400"
               >
                 {photoUrl ? (
@@ -110,27 +117,25 @@ export default function QuestionnairePage({
                   <span className="text-3xl">📸</span>
                 )}
               </button>
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="text-xs text-rose-400 mt-2 hover:text-rose-600"
-              >
-                {photoUrl ? "Change photo" : "Add a photo (optional)"}
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                capture="user"
-                className="hidden"
-                onChange={handlePhoto}
-              />
+
+              {/* Hidden inputs */}
+              <input ref={cameraRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhoto} />
+              <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+
+              <div className="flex gap-3 mt-2">
+                <button onClick={() => cameraRef.current?.click()} className="text-xs text-rose-400 hover:text-rose-600 bg-rose-50 px-3 py-1 rounded-full">
+                  📷 Camera
+                </button>
+                <button onClick={() => galleryRef.current?.click()} className="text-xs text-rose-400 hover:text-rose-600 bg-rose-50 px-3 py-1 rounded-full">
+                  🖼️ Gallery
+                </button>
+              </div>
+              <p className="text-xs text-rose-300 mt-1">Optional</p>
             </div>
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-rose-600 mb-1">
-                Your Name *
-              </label>
+              <label className="block text-sm font-medium text-rose-600 mb-1">Your Name *</label>
               <input
                 type="text"
                 value={name}
@@ -141,28 +146,79 @@ export default function QuestionnairePage({
               />
             </div>
 
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
             <button
               onClick={() => {
                 if (!name.trim()) { setError("Enter your name first!"); return; }
                 setError("");
-                setStep("questions");
+                setStep("gender");
               }}
               className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 rounded-xl text-lg transition-all active:scale-95"
             >
-              Next: Answer Questions →
+              Next →
             </button>
-
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
           </div>
         </div>
       </main>
     );
   }
 
+  // Step 2: Gender
+  if (step === "gender") {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center p-6">
+        <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm animate-fade-in">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-2">✨</div>
+            <h1 className="text-2xl font-bold text-rose-600">One more thing</h1>
+            <p className="text-rose-400 text-sm mt-1">This helps us find your Secret Flame</p>
+          </div>
+
+          <div className="space-y-3 mb-6">
+            {[
+              { value: "male", label: "Male", emoji: "👨" },
+              { value: "female", label: "Female", emoji: "👩" },
+              { value: "other", label: "Other / Prefer not to say", emoji: "🌈" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setGender(opt.value as typeof gender)}
+                className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all text-base font-medium flex items-center gap-3 ${
+                  gender === opt.value
+                    ? "border-rose-500 bg-rose-50 text-rose-700"
+                    : "border-gray-100 hover:border-rose-200 text-gray-600"
+                }`}
+              >
+                <span className="text-2xl">{opt.emoji}</span>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => {
+              if (!gender) { return; }
+              setStep("questions");
+            }}
+            disabled={!gender}
+            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-bold py-4 rounded-xl text-lg transition-all active:scale-95"
+          >
+            Let&apos;s Go! 🔥
+          </button>
+
+          <button onClick={() => setStep("info")} className="block w-full text-center text-rose-300 text-sm mt-3 hover:text-rose-400">
+            ← Back
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  // Step 3: Questions
   return (
     <main className="min-h-screen p-4 pb-32">
       <div className="max-w-lg mx-auto">
-        {/* Header */}
         <div className="text-center py-4 mb-2">
           <h1 className="text-xl font-bold text-rose-600">{name}&apos;s Profile</h1>
           <div className="flex items-center gap-2 justify-center mt-2">
@@ -176,7 +232,6 @@ export default function QuestionnairePage({
           </div>
         </div>
 
-        {/* Questions */}
         <div className="space-y-4">
           {questions.map((q) => (
             <div key={q.id} className="bg-white rounded-2xl shadow p-5">
@@ -214,7 +269,6 @@ export default function QuestionnairePage({
         </div>
       </div>
 
-      {/* Sticky submit button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur border-t border-rose-100">
         <div className="max-w-lg mx-auto">
           {error && <p className="text-red-500 text-sm text-center mb-2">{error}</p>}
@@ -226,7 +280,7 @@ export default function QuestionnairePage({
             {loading
               ? "Submitting..."
               : allAnswered
-              ? "Submit & Find My Match! 💘"
+              ? "Reveal My Secret Flame 🔥"
               : `Answer ${totalQuestions - answeredCount} more question${totalQuestions - answeredCount !== 1 ? "s" : ""}...`}
           </button>
         </div>

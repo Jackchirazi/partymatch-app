@@ -34,9 +34,15 @@ export async function POST(req: NextRequest) {
       data: { matchedWith: null, matchNote: null },
     });
 
+    // Parse custom questions if party has them
+    const customQuestions = party.customQuestions
+      ? JSON.parse(party.customQuestions)
+      : undefined;
+
     // Call Claude to do the matching
     const result = await matchGuests(
-      guests.map((g) => ({ id: g.id, name: g.name, answers: g.answers }))
+      guests.map((g) => ({ id: g.id, name: g.name, gender: g.gender, answers: g.answers })),
+      customQuestions
     );
 
     // Write matches to DB

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
-    const { partyId, name, photoUrl, answers } = await req.json();
+    const { partyId, name, gender, photoUrl, answers } = await req.json();
 
     if (!partyId || !name || !answers) {
       return NextResponse.json(
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       data: {
         partyId,
         name,
+        gender: gender || null,
         photoUrl: photoUrl || null,
         answers: JSON.stringify(answers),
       },

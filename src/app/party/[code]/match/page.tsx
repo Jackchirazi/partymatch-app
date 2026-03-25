@@ -14,7 +14,7 @@ export default function MatchPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  use(params); // code not needed here but required for type
+  use(params);
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [showReveal, setShowReveal] = useState(false);
   const [guestName, setGuestName] = useState("");
@@ -26,7 +26,6 @@ export default function MatchPage({
     const guestId = localStorage.getItem("guestId");
     if (!guestId) return;
 
-    // Poll for match every 5 seconds
     let timeoutId: ReturnType<typeof setTimeout>;
 
     async function checkMatch() {
@@ -36,21 +35,13 @@ export default function MatchPage({
 
         if (data.matched) {
           setMatchData(data as MatchData);
-          // Delay reveal for dramatic effect
           setTimeout(() => {
             setShowReveal(true);
-            // Fire confetti
             import("canvas-confetti").then(({ default: confetti }) => {
-              confetti({
-                particleCount: 150,
-                spread: 80,
-                origin: { y: 0.6 },
-                colors: ["#f43f5e", "#fb7185", "#fda4af", "#ff69b4", "#fff"],
-              });
+              confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ["#f43f5e", "#fb7185", "#fda4af", "#ff69b4", "#ff4500", "#fff"] });
             });
           }, 300);
         } else {
-          // Check again in 5 seconds
           timeoutId = setTimeout(checkMatch, 5000);
         }
       } catch {
@@ -66,12 +57,11 @@ export default function MatchPage({
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="text-center animate-fade-in">
-          <div className="text-7xl mb-6 animate-bounce-soft">⏳</div>
+          <div className="text-7xl mb-6 animate-bounce-soft">🔥</div>
           <h1 className="text-2xl font-bold text-rose-600 mb-2">You&apos;re in!</h1>
           <p className="text-rose-400 text-lg mb-2">Hey {guestName}! 👋</p>
-          <p className="text-rose-400">Waiting for the host to match everyone...</p>
-          <p className="text-rose-300 text-sm mt-4">Keep this page open — your match will appear here!</p>
-
+          <p className="text-rose-400">The sparks are still flying...</p>
+          <p className="text-rose-300 text-sm mt-2">Keep this page open — your Secret Flame will appear here!</p>
           <div className="mt-8 flex gap-2 justify-center">
             <div className="w-3 h-3 bg-rose-300 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
             <div className="w-3 h-3 bg-rose-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -89,9 +79,9 @@ export default function MatchPage({
     <main className="min-h-screen flex flex-col items-center justify-center p-6">
       {showReveal && (
         <div className="text-center animate-pop">
-          <div className="text-5xl mb-4">💘</div>
+          <div className="text-5xl mb-2">🔥</div>
           <h1 className="text-3xl font-bold text-rose-600 mb-1">
-            {isTrio ? "Your trio is..." : "Your match is..."}
+            {isTrio ? "Your Secret Flames are..." : "Your Secret Flame is..."}
           </h1>
           <p className="text-rose-400 mb-6">Hey {guestName}!</p>
 
@@ -105,9 +95,7 @@ export default function MatchPage({
                 />
               ) : (
                 <div className="w-28 h-28 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-3 border-4 border-rose-200">
-                  <span className="text-5xl">
-                    {person.name.charAt(0).toUpperCase()}
-                  </span>
+                  <span className="text-5xl">{person.name.charAt(0).toUpperCase()}</span>
                 </div>
               )}
               <h2 className="text-2xl font-bold text-gray-800">{person.name}</h2>
@@ -120,14 +108,11 @@ export default function MatchPage({
             </div>
           )}
 
-          <p className="text-rose-400 mt-6 text-lg font-medium">
-            Now go find them! 🕵️
+          <p className="text-rose-400 mt-6 text-lg font-medium animate-bounce-soft">
+            Go find your flame! 🔥
           </p>
 
-          <Link
-            href="/"
-            className="block mt-6 text-rose-300 text-sm hover:text-rose-400"
-          >
+          <Link href="/" className="block mt-6 text-rose-300 text-sm hover:text-rose-400">
             Back to home
           </Link>
         </div>
@@ -135,7 +120,7 @@ export default function MatchPage({
 
       {!showReveal && matchData.matched && (
         <div className="text-center">
-          <div className="text-6xl animate-bounce-soft">💘</div>
+          <div className="text-6xl animate-bounce-soft">🔥</div>
           <p className="text-rose-400 mt-4">Drumroll please...</p>
         </div>
       )}

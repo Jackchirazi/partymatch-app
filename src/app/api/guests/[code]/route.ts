@@ -30,10 +30,11 @@ export async function GET(
     });
 
     return NextResponse.json({
-      party: { id: party.id, name: party.name, code: party.code, matchingDone: party.matchingDone },
+      party: { id: party.id, name: party.name, code: party.code, matchingDone: party.matchingDone, customQuestions: party.customQuestions },
       guests: guests.map((g) => ({
         id: g.id,
         name: g.name,
+        gender: g.gender,
         photoUrl: g.photoUrl,
         answers: JSON.parse(g.answers),
         matchedWith: g.matchedWith,

@@ -23,7 +23,8 @@
       "Bash(git push:*)",
       "Bash(nslookup aws-0-us-east-1.pooler.supabase.com)",
       "Bash(node:*)",
-      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_LWtXCRu3mY1V@ep-flat-bread-aneewcce-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx prisma migrate deploy 2>&1)"
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_LWtXCRu3mY1V@ep-flat-bread-aneewcce-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx prisma migrate deploy 2>&1)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_LWtXCRu3mY1V@ep-flat-bread-aneewcce-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx prisma migrate dev --name add_gender_and_custom_questions 2>&1)"
     ]
   }
 }
