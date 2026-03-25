@@ -165,8 +165,13 @@ Rules for questions:
   const response = await res.json() as { content: Array<{ type: string; text: string }> };
   const text = response.content[0].type === "text" ? response.content[0].text : "";
 
+  // Try to extract JSON — Claude sometimes responds with plain text in conversation
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("Claude did not return valid JSON");
+  if (!jsonMatch) return { suggestion: text.trim() };
 
-  return JSON.parse(jsonMatch[0]);
+  try {
+    return JSON.parse(jsonMatch[0]);
+  } catch {
+    return { suggestion: text.trim() };
+  }
 }
