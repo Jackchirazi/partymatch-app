@@ -26,7 +26,14 @@ export default function Home() {
         </Link>
       </div>
 
-      <p className="mt-10 text-rose-300 text-sm text-center">
+      <Link
+        href="/admin"
+        className="mt-6 text-rose-300 hover:text-rose-400 text-sm transition-all"
+      >
+        🔐 Admin Login
+      </Link>
+
+      <p className="mt-4 text-rose-300 text-sm text-center">
         Powered by AI ✨
       </p>
     </main>
