@@ -50,9 +50,10 @@ export default function AdminPage({
   const [questionsDirty, setQuestionsDirty] = useState(false);
   const [savingQuestions, setSavingQuestions] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
-  const [aiMessage, setAiMessage] = useState("");
+  const [chatInput, setChatInput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState<{ suggestion: string; updatedQuestions?: Question[] } | null>(null);
+  type ChatEntry = { role: "user" | "assistant"; content: string; updatedQuestions?: Question[] };
+  const [chatHistory, setChatHistory] = useState<ChatEntry[]>([]);
 
   const fetchGuests = useCallback(async (pwd: string) => {
     setLoading(true);
@@ -228,11 +229,16 @@ export default function AdminPage({
     setQuestionsDirty(false);
   }
 
-  async function askAI() {
-    if (!party || !aiMessage.trim()) return;
+  async function sendAIMessage() {
+    if (!party || !chatInput.trim()) return;
+    const userMessage = chatInput.trim();
+    setChatInput("");
+    const newUserEntry: ChatEntry = { role: "user", content: userMessage };
+    setChatHistory((prev) => [...prev, newUserEntry]);
     setAiLoading(true);
-    setAiSuggestion(null);
     try {
+      // Build history for API (only role+content, no updatedQuestions)
+      const apiHistory = [...chatHistory, newUserEntry].map(({ role, content }) => ({ role, content }));
       const res = await fetch("/api/admin/questions/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -240,25 +246,31 @@ export default function AdminPage({
           partyId: party.id,
           adminPassword: password,
           currentQuestions: questions,
-          message: aiMessage,
+          history: apiHistory,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setAiSuggestion(data);
+      const assistantEntry: ChatEntry = {
+        role: "assistant",
+        content: data.suggestion,
+        updatedQuestions: data.updatedQuestions,
+      };
+      setChatHistory((prev) => [...prev, assistantEntry]);
     } catch (e) {
-      setAiSuggestion({ suggestion: "Error: " + (e instanceof Error ? e.message : "AI request failed") });
+      setChatHistory((prev) => [...prev, { role: "assistant", content: "Error: " + (e instanceof Error ? e.message : "AI request failed") }]);
     } finally {
       setAiLoading(false);
     }
   }
 
-  function acceptAISuggestion() {
-    if (!aiSuggestion?.updatedQuestions) return;
-    setQuestions(aiSuggestion.updatedQuestions);
+  function acceptAISuggestion(updatedQuestions: Question[]) {
+    setQuestions(updatedQuestions);
     setQuestionsDirty(true);
-    setAiSuggestion(null);
-    setAiMessage("");
+    // Mark the entry as accepted (clear updatedQuestions so button disappears)
+    setChatHistory((prev) => prev.map((entry) =>
+      entry.updatedQuestions === updatedQuestions ? { ...entry, updatedQuestions: undefined } : entry
+    ));
   }
 
   function getMatchedGuest(matchedWith: string | null): Guest | undefined {
@@ -458,40 +470,67 @@ export default function AdminPage({
           <div className="space-y-4">
             {/* AI Chat */}
             <div className="bg-white rounded-2xl shadow p-4">
-              <h3 className="font-bold text-rose-600 mb-3">🤖 AI Question Assistant</h3>
-              <p className="text-xs text-rose-400 mb-3">Ask the AI to add, change, or improve questions. Examples: "Add a question about favorite movies", "Turn question 3 into multiple choice", "Make the questions spicier"</p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={aiMessage}
-                  onChange={(e) => setAiMessage(e.target.value)}
-                  placeholder="Ask AI to change questions..."
-                  className="flex-1 border-2 border-rose-100 focus:border-rose-400 rounded-xl px-3 py-2 outline-none text-sm text-gray-700 placeholder-gray-300"
-                  onKeyDown={(e) => e.key === "Enter" && askAI()}
-                />
-                <button
-                  onClick={askAI}
-                  disabled={aiLoading || !aiMessage.trim()}
-                  className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl transition-all text-sm"
-                >
-                  {aiLoading ? "..." : "Ask"}
-                </button>
-              </div>
+              <h3 className="font-bold text-rose-600 mb-1">🤖 AI Question Assistant</h3>
+              <p className="text-xs text-rose-400 mb-3">Chat with AI to brainstorm and customize your questions. Say things like &quot;make them spicier&quot;, &quot;add a question about travel&quot;, or &quot;what would work well for a 21st birthday?&quot;</p>
 
-              {aiSuggestion && (
-                <div className="mt-3 bg-rose-50 rounded-xl p-3">
-                  <p className="text-sm text-rose-700 font-medium mb-2">AI says: {aiSuggestion.suggestion}</p>
-                  {aiSuggestion.updatedQuestions && (
-                    <div className="flex gap-2">
-                      <button onClick={acceptAISuggestion} className="bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-all">
-                        ✓ Accept Changes
-                      </button>
-                      <button onClick={() => setAiSuggestion(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-bold px-4 py-2 rounded-lg transition-all">
-                        Dismiss
-                      </button>
+              {/* Chat history */}
+              {chatHistory.length > 0 && (
+                <div className="space-y-3 mb-3 max-h-80 overflow-y-auto">
+                  {chatHistory.map((entry, i) => (
+                    <div key={i} className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${entry.role === "user" ? "bg-rose-500 text-white rounded-br-sm" : "bg-rose-50 text-rose-800 rounded-bl-sm"}`}>
+                        <p>{entry.content}</p>
+                        {entry.updatedQuestions && (
+                          <div className="mt-2 pt-2 border-t border-rose-200 flex gap-2">
+                            <button
+                              onClick={() => acceptAISuggestion(entry.updatedQuestions!)}
+                              className="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-lg transition-all"
+                            >
+                              ✓ Apply Changes
+                            </button>
+                            <button
+                              onClick={() => setChatHistory((prev) => prev.map((e, j) => j === i ? { ...e, updatedQuestions: undefined } : e))}
+                              className="bg-white hover:bg-gray-100 text-gray-500 text-xs font-bold px-3 py-1 rounded-lg transition-all"
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {aiLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-rose-50 text-rose-400 text-sm rounded-2xl rounded-bl-sm px-4 py-3">
+                        Thinking...
+                      </div>
                     </div>
                   )}
                 </div>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder={chatHistory.length === 0 ? "Ask AI about your questions..." : "Reply..."}
+                  className="flex-1 border-2 border-rose-100 focus:border-rose-400 rounded-xl px-3 py-2 outline-none text-sm text-gray-700 placeholder-gray-300"
+                  onKeyDown={(e) => e.key === "Enter" && sendAIMessage()}
+                  disabled={aiLoading}
+                />
+                <button
+                  onClick={sendAIMessage}
+                  disabled={aiLoading || !chatInput.trim()}
+                  className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl transition-all text-sm"
+                >
+                  {aiLoading ? "..." : "Send"}
+                </button>
+              </div>
+              {chatHistory.length > 0 && (
+                <button onClick={() => setChatHistory([])} className="text-xs text-rose-300 hover:text-rose-400 mt-2 w-full text-center">
+                  Clear conversation
+                </button>
               )}
             </div>
 

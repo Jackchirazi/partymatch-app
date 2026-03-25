@@ -8,9 +8,9 @@ export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   try {
-    const { partyId, adminPassword, currentQuestions, message } = await req.json();
+    const { partyId, adminPassword, currentQuestions, history } = await req.json();
 
-    if (!partyId || !adminPassword || !message) {
+    if (!partyId || !adminPassword || !history?.length) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const valid = await bcrypt.compare(adminPassword, party.adminPassword);
     if (!valid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const result = await improveQuestion(currentQuestions as Question[], message);
+    const result = await improveQuestion(currentQuestions as Question[], history);
     return NextResponse.json(result);
   } catch (error) {
     console.error("AI questions error:", error);

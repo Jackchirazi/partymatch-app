@@ -42,16 +42,22 @@ export async function matchGuests(guests: GuestData[], customQuestions?: Questio
     })
     .join("\n\n---\n\n");
 
+  const guestIds = guests.map((g) => g.id);
+
   const prompt = `You are a matchmaking genius for a birthday party icebreaker game. Everyone has a "Secret Flame" — one person they are secretly matched with tonight. Your job is to pair everyone into the most entertaining and compatible pairings based on their questionnaire answers.
 
 RULES:
-- Every person must be matched with exactly ONE other person.
+- EVERY SINGLE GUEST must appear in exactly one match entry. Do not skip anyone.
+- The total number of guests is ${guests.length}. You must produce exactly ${Math.floor(guests.length / 2)} match entries${guests.length % 2 === 1 ? " (the last one being a trio of 3)" : ""}.
 - Matches are reciprocal: if A matches B, then B matches A.
 - IMPORTANT: Match males with females only (opposite-sex matching). If someone's gender is "other" or not specified, they can be matched with anyone.
-- If genders are unbalanced (more males than females), the leftover people of the same gender should still be matched with each other rather than going unmatched.
-- If there is an odd number of guests after pairing, create one group of 3 (add guest3_id to that entry).
+- If genders are unbalanced (more males than females), pair leftover same-gender guests together rather than leaving anyone unmatched.
+- If there is an odd number of guests, the last entry MUST have a guest3_id to form a trio of 3.
+- Use ONLY the exact guest IDs listed below. Do not invent or modify any IDs.
 - Look for both similar AND complementary pairings — sometimes opposites make the most fun match!
-- The "reason" should be flirty, fun, and specific — referencing their actual answers. Keep it to 1-2 sentences. Make it feel exciting and mysterious.
+- The "reason" should be flirty, fun, and specific — referencing their actual answers. Keep it to 1-2 sentences.
+
+Valid guest IDs (you must use ALL of these): ${JSON.stringify(guestIds)}
 
 Here are the guests:
 
@@ -104,30 +110,29 @@ For a trio (odd number), the last entry gets an extra field:
   return JSON.parse(jsonMatch[0]) as MatchResult;
 }
 
+type ChatMessage = { role: "user" | "assistant"; content: string };
+
 export async function improveQuestion(
   currentQuestions: Question[],
-  adminMessage: string
+  history: ChatMessage[]
 ): Promise<{ updatedQuestions?: Question[]; suggestion: string }> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
 
-  const prompt = `You are helping a party host customize their matchmaking questionnaire. The host has a request about their questions.
+  const systemPrompt = `You are helping a party host customize their matchmaking questionnaire. You can have a back-and-forth conversation to help them design the perfect questions.
 
 Current questions (JSON):
 ${JSON.stringify(currentQuestions, null, 2)}
 
-Host's request: "${adminMessage}"
-
-Based on the request, either:
-1. Modify one or more existing questions
-2. Add a new question
-3. Convert a text question to multiple choice (or vice versa)
-4. Suggest a completely new question to add
-
-Return ONLY valid JSON in this format:
+When the host asks you to make changes, return ONLY valid JSON in this format:
 {
   "suggestion": "Brief explanation of what you changed/added",
   "updatedQuestions": [/* the full updated questions array */]
+}
+
+When the host is just chatting, exploring ideas, or asking questions (not requesting a specific change yet), return JSON with only a suggestion and no updatedQuestions:
+{
+  "suggestion": "Your conversational response here"
 }
 
 Rules for questions:
@@ -147,7 +152,8 @@ Rules for questions:
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
       max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
+      system: systemPrompt,
+      messages: history,
     }),
   });
 
