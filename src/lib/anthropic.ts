@@ -1,9 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { questions } from "./questions";
-
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
 
 type GuestData = {
   id: string;
@@ -29,6 +24,9 @@ function buildQuestionText(questionId: string, answer: string): string {
 }
 
 export async function matchGuests(guests: GuestData[]): Promise<MatchResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
+
   const guestProfiles = guests
     .map((g) => {
       const answers = JSON.parse(g.answers) as Record<string, string>;
@@ -71,11 +69,26 @@ For a trio (odd number), the last entry gets an extra field:
   "reason": "Why all three make a fun trio"
 }`;
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 4096,
-    messages: [{ role: "user", content: prompt }],
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+    }),
   });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Anthropic API error ${res.status}: ${errText}`);
+  }
+
+  const response = await res.json() as { content: Array<{ type: string; text: string }> };
 
   const text =
     response.content[0].type === "text" ? response.content[0].text : "";
