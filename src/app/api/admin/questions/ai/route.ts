@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { improveQuestion } from "@/lib/anthropic";
 import type { Question } from "@/lib/questions";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
