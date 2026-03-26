@@ -14,6 +14,7 @@ export default function QuestionnairePage({
   const router = useRouter();
 
   const [name, setName] = useState("");
+  const [pin, setPin] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "">("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -90,7 +91,7 @@ export default function QuestionnairePage({
       const res = await fetch("/api/guest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ partyId, name: name.trim(), gender, photoUrl, answers }),
+        body: JSON.stringify({ partyId, name: name.trim(), pin, gender, photoUrl, answers }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -184,11 +185,30 @@ export default function QuestionnairePage({
               />
             </div>
 
+            {/* PIN */}
+            <div>
+              <label className="block text-sm font-semibold mb-1" style={{ color: theme.text }}>Set a 4-digit PIN *</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="So you can log back in"
+                className="w-full border-2 rounded-xl px-4 py-3 outline-none transition-all text-gray-700 placeholder-gray-300 tracking-widest font-mono"
+                style={{ borderColor: theme.border }}
+                onFocus={(e) => e.target.style.borderColor = theme.primary}
+                onBlur={(e) => e.target.style.borderColor = theme.border}
+                maxLength={4}
+              />
+              <p className="text-xs text-gray-300 mt-1">Remember this — you&apos;ll need it to log back in</p>
+            </div>
+
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
             <button
               onClick={() => {
                 if (!name.trim()) { setError("Enter your name first!"); return; }
+                if (pin.length !== 4) { setError("Set a 4-digit PIN to continue"); return; }
                 setError("");
                 setStep("gender");
               }}

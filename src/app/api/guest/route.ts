@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { partyId, name, gender, photoUrl, answers } = await req.json();
+    const { partyId, name, pin, gender, photoUrl, answers } = await req.json();
 
     if (!partyId || !name || !answers) {
       return NextResponse.json(
@@ -12,15 +13,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      return NextResponse.json({ error: "A 4-digit PIN is required" }, { status: 400 });
+    }
+
     const party = await prisma.party.findUnique({ where: { id: partyId } });
     if (!party) {
       return NextResponse.json({ error: "Party not found" }, { status: 404 });
     }
 
+    const hashedPin = await bcrypt.hash(pin, 10);
+
     const guest = await prisma.guest.create({
       data: {
         partyId,
         name,
+        pin: hashedPin,
         gender: gender || null,
         photoUrl: photoUrl || null,
         answers: JSON.stringify(answers),
@@ -79,7 +87,6 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
-    const bcrypt = await import("bcryptjs");
     const valid = await bcrypt.compare(adminPassword, guest.party.adminPassword);
     if (!valid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

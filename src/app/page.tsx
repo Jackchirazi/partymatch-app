@@ -36,7 +36,10 @@ export default function Home() {
       </div>
 
       <div className="relative z-10 mt-8 flex flex-col items-center gap-2">
-        <Link href="/admin" className="text-rose-400 hover:text-rose-500 text-sm transition-all">
+        <Link href="/login" className="text-rose-400 hover:text-rose-500 text-sm font-semibold transition-all">
+          Already joined? Log back in
+        </Link>
+        <Link href="/admin" className="text-rose-300 hover:text-rose-400 text-sm transition-all">
           Admin Login
         </Link>
         <p className="text-rose-300 text-xs">Powered by AI</p>

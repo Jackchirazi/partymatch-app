@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { defaultSettings, getTheme, type PartySettings } from "@/lib/themes";
 
 type MatchData = {
@@ -15,7 +16,8 @@ export default function MatchPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  use(params);
+  const { code } = use(params);
+  const router = useRouter();
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [showReveal, setShowReveal] = useState(false);
   const [guestName, setGuestName] = useState("");
@@ -129,7 +131,15 @@ export default function MatchPage({
             Go find them! 🔥
           </p>
 
-          <Link href="/" className="block mt-6 text-gray-300 text-sm hover:text-gray-400">
+          <button
+            onClick={() => router.push(`/party/${code}/chat`)}
+            className="mt-4 w-full max-w-xs mx-auto block text-white font-black py-4 rounded-xl text-lg transition-all active:scale-95"
+            style={{ backgroundColor: theme.primary }}
+          >
+            💬 Message your {matchLabel}
+          </button>
+
+          <Link href="/" className="block mt-4 text-gray-300 text-sm hover:text-gray-400">
             Back to home
           </Link>
         </div>
