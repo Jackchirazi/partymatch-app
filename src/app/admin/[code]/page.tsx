@@ -947,6 +947,32 @@ export default function AdminPage({
             </div>
 
             <div className="bg-white rounded-2xl shadow p-5">
+              <h3 className="font-bold text-rose-600 text-lg mb-3">Match Mode</h3>
+              <button
+                onClick={() => { setPartySettings((s) => ({ ...s, blindMode: !s.blindMode })); setSettingsDirty(true); }}
+                className="w-full flex items-center justify-between px-4 py-4 rounded-xl border-2 transition-all"
+                style={partySettings.blindMode ? { borderColor: "#f43f5e", backgroundColor: "#fff1f2" } : { borderColor: "#f1f5f9" }}
+              >
+                <div className="text-left">
+                  <div className="font-black text-gray-800 flex items-center gap-2">
+                    <span>🕵️ Secret Mode</span>
+                    {partySettings.blindMode && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500 text-white">ON</span>}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">Guests won&apos;t see their match&apos;s name or photo — they connect only through in-app chat</p>
+                </div>
+                <div
+                  className="w-12 h-6 rounded-full transition-all flex-shrink-0 ml-3 flex items-center px-1"
+                  style={{ backgroundColor: partySettings.blindMode ? "#f43f5e" : "#e2e8f0" }}
+                >
+                  <div
+                    className="w-4 h-4 bg-white rounded-full shadow transition-all"
+                    style={{ transform: partySettings.blindMode ? "translateX(24px)" : "translateX(0)" }}
+                  />
+                </div>
+              </button>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow p-5">
               <h3 className="font-bold text-rose-600 text-lg mb-3">Color Theme</h3>
               <div className="grid grid-cols-3 gap-3">
                 {(Object.entries(themes) as [ThemeKey, typeof themes[ThemeKey]][]).map(([key, t]) => (

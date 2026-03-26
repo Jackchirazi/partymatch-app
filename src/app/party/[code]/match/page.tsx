@@ -67,7 +67,7 @@ export default function MatchPage({
   }, []);
 
   const theme = getTheme(settings.theme);
-  const { matchLabel } = settings;
+  const { matchLabel, blindMode } = settings;
 
   if (!matchData || !matchData.matched) {
     return (
@@ -92,7 +92,40 @@ export default function MatchPage({
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6">
-      {showReveal && (
+      {showReveal && blindMode && (
+        <div className="text-center animate-pop">
+          <div className="text-5xl mb-2 animate-float">🕵️</div>
+          <h1 className="text-3xl font-black mb-1" style={{ color: theme.text }}>
+            You&apos;ve been matched!
+          </h1>
+          <p className="text-gray-400 mb-6">Hey {guestName} — your {matchLabel} is a mystery...</p>
+
+          <div className="bg-white rounded-3xl shadow-xl p-6 mb-4 w-full max-w-xs mx-auto">
+            <div
+              className="w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-3 border-4 animate-pulse"
+              style={{ backgroundColor: theme.lighter, borderColor: theme.border }}
+            >
+              <span className="text-5xl">❓</span>
+            </div>
+            <h2 className="text-2xl font-black text-gray-400">???</h2>
+            <p className="text-sm text-gray-300 mt-1">Find out through chat</p>
+          </div>
+
+          <button
+            onClick={() => router.push(`/party/${code}/chat`)}
+            className="mt-4 w-full max-w-xs mx-auto block text-white font-black py-4 rounded-xl text-lg transition-all active:scale-95"
+            style={{ backgroundColor: theme.primary }}
+          >
+            💬 Start chatting →
+          </button>
+
+          <Link href="/" className="block mt-4 text-gray-300 text-sm hover:text-gray-400">
+            Back to home
+          </Link>
+        </div>
+      )}
+
+      {showReveal && !blindMode && (
         <div className="text-center animate-pop">
           <div className="text-5xl mb-2 animate-float">🔥</div>
           <h1 className="text-3xl font-black mb-1" style={{ color: theme.text }}>

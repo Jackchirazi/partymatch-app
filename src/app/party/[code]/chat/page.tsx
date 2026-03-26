@@ -58,10 +58,11 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
     try {
       const res = await fetch(`/api/messages?guestId=${id}`);
       const data = await res.json();
-      if (data.partner === null && loading) setNoMatch(true);
       if (data.partner) {
         setPartner(data.partner);
         setNoMatch(false);
+      } else {
+        setNoMatch(true);
       }
       setMessages(data.messages || []);
       setLoading(false);
@@ -101,7 +102,7 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
   }
 
   const theme = getTheme(settings.theme);
-  const { matchLabel } = settings;
+  const { matchLabel, blindMode } = settings;
 
   if (loading) {
     return (
@@ -114,9 +115,14 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
   if (noMatch) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-        <div className="text-5xl mb-4">⏳</div>
+        <div className="text-5xl mb-4 animate-pulse">⏳</div>
         <h1 className="text-xl font-black text-gray-800 mb-2">No match yet</h1>
-        <p className="text-gray-400 text-sm mb-6">Come back here after the host reveals matches</p>
+        <p className="text-gray-400 text-sm mb-6">Waiting for the host to reveal matches...</p>
+        <div className="flex gap-2 justify-center mb-6">
+          <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: theme.textLight, animationDelay: "0ms" }} />
+          <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: theme.primary, animationDelay: "150ms" }} />
+          <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: theme.text, animationDelay: "300ms" }} />
+        </div>
         <button onClick={() => router.back()} className="text-gray-300 text-sm hover:text-gray-400">← Go back</button>
       </main>
     );
@@ -127,7 +133,11 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
       {/* Header */}
       <div className="bg-white shadow-sm px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-600 text-lg">←</button>
-        {partner?.photoUrl ? (
+        {blindMode ? (
+          <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 text-xl" style={{ backgroundColor: theme.lighter, borderColor: theme.border }}>
+            ❓
+          </div>
+        ) : partner?.photoUrl ? (
           <img src={partner.photoUrl} alt={partner.name} className="w-10 h-10 rounded-full object-cover border-2" style={{ borderColor: theme.border }} />
         ) : (
           <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 font-black text-lg" style={{ backgroundColor: theme.lighter, borderColor: theme.border, color: theme.text }}>
@@ -135,7 +145,7 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
           </div>
         )}
         <div>
-          <div className="font-black text-gray-800 text-sm">{partner?.name}</div>
+          <div className="font-black text-gray-800 text-sm">{blindMode ? "???" : partner?.name}</div>
           <div className="text-xs" style={{ color: theme.textLight }}>Your {matchLabel}</div>
         </div>
       </div>

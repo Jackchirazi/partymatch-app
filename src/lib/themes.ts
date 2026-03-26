@@ -86,6 +86,7 @@ export type PartySettings = {
   tagline: string;
   matchLabel: string;
   theme: ThemeKey;
+  blindMode: boolean;
 };
 
 export const defaultSettings: PartySettings = {
@@ -93,6 +94,7 @@ export const defaultSettings: PartySettings = {
   tagline: "Find your perfect match tonight!",
   matchLabel: "Secret Flame",
   theme: "pink",
+  blindMode: false,
 };
 
 export function getTheme(key: string): Theme {
