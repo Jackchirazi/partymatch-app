@@ -22,7 +22,24 @@ type MatchResult = {
 function buildQuestionText(questionId: string, answer: string, questionList: Question[]): string {
   const q = questionList.find((q) => q.id === questionId);
   if (!q) return `${questionId}: ${answer}`;
+  if (q.reveals && q.reveals[answer]) {
+    return `${q.question} → ${answer} [${q.reveals[answer]}]`;
+  }
+  if (q.dimension && q.type === "text") {
+    return `${q.question} → ${answer} [${q.dimension}]`;
+  }
   return `${q.question} → ${answer}`;
+}
+
+function buildDimensionGuide(questionList: Question[]): string {
+  const lines = questionList
+    .filter((q) => q.dimension)
+    .map(
+      (q) =>
+        `- "${q.question}" → measures: ${q.dimension}${q.type === "text" ? " — HIGH SIGNAL (free text, read carefully)" : ""}`
+    )
+    .join("\n");
+  return lines ? `QUESTION DIMENSION GUIDE:\n${lines}` : "";
 }
 
 export async function matchGuests(guests: GuestData[], customQuestions?: Question[]): Promise<MatchResult> {
@@ -44,7 +61,28 @@ export async function matchGuests(guests: GuestData[], customQuestions?: Questio
 
   const guestIds = guests.map((g) => g.id);
 
+  const compatibilityFramework = `COMPATIBILITY FRAMEWORK — use these axes when evaluating pairings:
+
+ALIGN THESE (similarity helps):
+- Humor style: mismatched registers create awkwardness. Match dry+dry, chaotic+physical. Dry+chaotic often clashes.
+- Conversational depth: deep-talk person + deflects-with-jokes person creates frustration.
+- Energy level: Sunday habits and energy_match reveal base energy — similar levels reduce friction.
+- Communication style: paragraph writer + machine-gun texter can grate unless other axes compensate strongly.
+
+CONTRAST CAN WORK (one from each end creates good dynamic tension):
+- Decision leadership: one decisive leader + one deferential follower is productive. Two leaders clash. Two followers stall.
+- Social dominance: two "work the room" extroverts compete. Room-worker + anchor-seeker balances.
+- Spontaneity: planner + spontaneous can complement if both are secure — spontaneous pulls, planner grounds.
+
+FREE TEXT — weight these heavily, they are the highest-signal inputs:
+- hot_take: reveals worldview, intellectual style, self-seriousness. Pair people whose takes would make the other nod hard or argue — not shrug.
+- song: reveals social identity and energy. Read genre and energy over literal song title. Compatible energy > same artist.
+
+${buildDimensionGuide(questionList)}`;
+
   const prompt = `You are a sharp social connector running a party matchmaking game. Your job is to figure out who would actually click — based on personality, energy, humor, and how they move through the world. You are not a relationship coach. You are not writing a love story. You are reading people and making interesting pairings that would be fun, surprising, or weirdly perfect in real life.
+
+${compatibilityFramework}
 
 MATCHING RULES:
 - EVERY SINGLE GUEST must appear in exactly one match entry. Do not skip anyone.
@@ -103,7 +141,11 @@ For a trio (odd number), the last entry gets an extra field:
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
-      max_tokens: 4096,
+      max_tokens: 16000,
+      thinking: {
+        type: "enabled",
+        budget_tokens: 10000,
+      },
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -113,8 +155,9 @@ For a trio (odd number), the last entry gets an extra field:
     throw new Error(`Anthropic API error ${res.status}: ${errText}`);
   }
 
-  const response = await res.json() as { content: Array<{ type: string; text: string }> };
-  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const response = await res.json() as { content: Array<{ type: string; text?: string; thinking?: string }> };
+  const textBlock = response.content.find((block) => block.type === "text");
+  const text = textBlock?.text ?? "";
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Claude did not return valid JSON");

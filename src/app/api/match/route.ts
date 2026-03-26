@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { matchGuests } from "@/lib/anthropic";
 
-export const maxDuration = 60; // Allow up to 60 seconds for Claude API call
+export const maxDuration = 120; // Extended thinking needs up to 120 seconds
 
 export async function POST(req: NextRequest) {
   try {
