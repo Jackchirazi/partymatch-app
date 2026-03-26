@@ -67,6 +67,21 @@ export default function AdminPage({
   type ChatEntry = { role: "user" | "assistant"; content: string; updatedQuestions?: Question[] };
   const [chatHistory, setChatHistory] = useState<ChatEntry[]>([]);
 
+  // Question presets
+  type QuestionSet = { id: string; name: string; questions: Question[] };
+  const [presets, setPresets] = useState<QuestionSet[]>([]);
+  const [presetName, setPresetName] = useState("");
+  const [savingPreset, setSavingPreset] = useState(false);
+  const [showSavePreset, setShowSavePreset] = useState(false);
+
+  const fetchPresets = useCallback(async () => {
+    const res = await fetch("/api/question-sets");
+    const data = await res.json();
+    setPresets(data.sets ?? []);
+  }, []);
+
+  useEffect(() => { fetchPresets(); }, [fetchPresets]);
+
   const fetchGuests = useCallback(async (pwd: string) => {
     setLoading(true);
     try {
@@ -335,6 +350,35 @@ export default function AdminPage({
       body: JSON.stringify({ partyId: party.id, adminPassword: password, action: "finalize" }),
     });
     fetchGuests(password);
+  }
+
+  async function savePreset() {
+    if (!presetName.trim()) return;
+    setSavingPreset(true);
+    try {
+      await fetch("/api/question-sets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: presetName.trim(), questions }),
+      });
+      setPresetName("");
+      setShowSavePreset(false);
+      fetchPresets();
+    } finally {
+      setSavingPreset(false);
+    }
+  }
+
+  function loadPreset(preset: QuestionSet) {
+    if (!confirm(`Load "${preset.name}"? This will replace your current questions.`)) return;
+    setQuestions(preset.questions);
+    setQuestionsDirty(true);
+  }
+
+  async function deletePreset(id: string) {
+    if (!confirm("Delete this preset?")) return;
+    await fetch(`/api/question-sets/${id}`, { method: "DELETE" });
+    fetchPresets();
   }
 
   async function saveSettings() {
@@ -694,6 +738,67 @@ export default function AdminPage({
                 <button onClick={() => setChatHistory([])} className="text-xs text-rose-300 hover:text-rose-400 mt-2 w-full text-center">
                   Clear conversation
                 </button>
+              )}
+            </div>
+
+            {/* Presets */}
+            <div className="bg-white rounded-2xl shadow p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-rose-600">Saved Question Sets</h3>
+                <button
+                  onClick={() => setShowSavePreset((v) => !v)}
+                  className="text-sm bg-rose-500 hover:bg-rose-600 text-white font-bold px-3 py-1.5 rounded-lg transition-all"
+                >
+                  + Save Current
+                </button>
+              </div>
+
+              {showSavePreset && (
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={presetName}
+                    onChange={(e) => setPresetName(e.target.value)}
+                    placeholder="Name this set (e.g. 'Birthday Party')"
+                    className="flex-1 border-2 border-rose-100 focus:border-rose-400 rounded-xl px-3 py-2 outline-none text-sm text-gray-700 placeholder-gray-300"
+                    onKeyDown={(e) => e.key === "Enter" && savePreset()}
+                    autoFocus
+                  />
+                  <button
+                    onClick={savePreset}
+                    disabled={savingPreset || !presetName.trim()}
+                    className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all"
+                  >
+                    {savingPreset ? "..." : "Save"}
+                  </button>
+                </div>
+              )}
+
+              {presets.length === 0 ? (
+                <p className="text-rose-300 text-sm text-center py-2">No saved sets yet — save your current questions to reuse them in any party</p>
+              ) : (
+                <div className="space-y-2">
+                  {presets.map((preset) => (
+                    <div key={preset.id} className="flex items-center gap-2 bg-rose-50 rounded-xl px-3 py-2">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800 text-sm">{preset.name}</p>
+                        <p className="text-xs text-rose-300">{preset.questions.length} questions</p>
+                      </div>
+                      <button
+                        onClick={() => loadPreset(preset)}
+                        className="text-xs bg-rose-500 hover:bg-rose-600 text-white font-bold px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        Load
+                      </button>
+                      <button
+                        onClick={() => deletePreset(preset.id)}
+                        className="text-red-300 hover:text-red-500 text-lg px-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 

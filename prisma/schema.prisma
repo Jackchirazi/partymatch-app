@@ -19,6 +19,13 @@ model Party {
   guests          Guest[]
 }
 
+model QuestionSet {
+  id        String   @id @default(cuid())
+  name      String
+  questions String   // JSON array of Question objects
+  createdAt DateTime @default(now())
+}
+
 model Guest {
   id          String   @id @default(cuid())
   partyId     String
