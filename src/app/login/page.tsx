@@ -37,6 +37,8 @@ export default function LoginPage() {
       localStorage.setItem("partyName", data.partyName);
       if (data.settings) {
         localStorage.setItem("partySettings", JSON.stringify(data.settings));
+      } else {
+        localStorage.removeItem("partySettings");
       }
 
       router.push(`/party/${data.partyCode}/match`);

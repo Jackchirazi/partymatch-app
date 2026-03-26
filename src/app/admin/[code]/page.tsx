@@ -45,7 +45,21 @@ export default function AdminPage({
   const [matchSuccess, setMatchSuccess] = useState("");
   const [expandedGuest, setExpandedGuest] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"guests" | "questions" | "settings">("guests");
+  const [activeTab, setActiveTab] = useState<"guests" | "questions" | "settings" | "messages">("guests");
+
+  // Messages tab state
+  type AdminThread = {
+    guest1: { id: string; name: string; photoUrl: string | null };
+    guest2: { id: string; name: string; photoUrl: string | null };
+    messages: { id: string; senderId: string; content: string; createdAt: string }[];
+    messageCount: number;
+    lastMessage: { content: string; senderId: string; createdAt: string } | null;
+  };
+  const [threads, setThreads] = useState<AdminThread[]>([]);
+  const [expandedThread, setExpandedThread] = useState<string | null>(null);
+  const [threadInput, setThreadInput] = useState<Record<string, string>>({});
+  const [threadSendAs, setThreadSendAs] = useState<Record<string, string>>({});
+  const [loadingThreads, setLoadingThreads] = useState(false);
 
   // Manual matching state
   const [pairingMode, setPairingMode] = useState(false);
@@ -396,6 +410,32 @@ export default function AdminPage({
     }
   }
 
+  async function fetchThreads() {
+    if (!party) return;
+    setLoadingThreads(true);
+    try {
+      const res = await fetch(`/api/admin/messages?partyId=${party.id}`, {
+        headers: { "x-admin-password": password },
+      });
+      const data = await res.json();
+      if (data.threads) setThreads(data.threads);
+    } finally {
+      setLoadingThreads(false);
+    }
+  }
+
+  async function sendAdminMessage(threadKey: string, senderId: string, receiverId: string) {
+    const content = threadInput[threadKey]?.trim();
+    if (!content || !party) return;
+    setThreadInput((prev) => ({ ...prev, [threadKey]: "" }));
+    await fetch("/api/admin/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ partyId: party.id, adminPassword: password, senderId, receiverId, content }),
+    });
+    fetchThreads();
+  }
+
   function getMatchedGuest(matchedWith: string | null): Guest | undefined {
     if (!matchedWith) return undefined;
     const ids = matchedWith.split(",");
@@ -533,6 +573,12 @@ export default function AdminPage({
             className={`flex-1 py-3 rounded-xl font-bold transition-all text-sm ${activeTab === "settings" ? "bg-rose-500 text-white" : "bg-white text-rose-400 hover:bg-rose-50"}`}
           >
             Settings {settingsDirty ? "●" : ""}
+          </button>
+          <button
+            onClick={() => { setActiveTab("messages"); fetchThreads(); }}
+            className={`flex-1 py-3 rounded-xl font-bold transition-all text-sm ${activeTab === "messages" ? "bg-rose-500 text-white" : "bg-white text-rose-400 hover:bg-rose-50"}`}
+          >
+            💬 Msgs
           </button>
         </div>
 
@@ -1006,6 +1052,129 @@ export default function AdminPage({
             <p className="text-xs text-rose-300 text-center">
               Settings apply to new guests joining — tell existing guests to refresh if needed
             </p>
+          </div>
+        )}
+
+        {/* MESSAGES TAB */}
+        {activeTab === "messages" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-black text-rose-600 text-lg">All Conversations</h2>
+              <button onClick={fetchThreads} className="text-xs text-rose-400 font-semibold px-3 py-1.5 bg-white rounded-lg shadow">
+                {loadingThreads ? "Loading..." : "↺ Refresh"}
+              </button>
+            </div>
+
+            {threads.length === 0 && !loadingThreads && (
+              <div className="text-center py-10 text-gray-400">
+                <div className="text-4xl mb-2">💬</div>
+                <p className="text-sm">No conversations yet — matches need to start chatting</p>
+              </div>
+            )}
+
+            {threads.map((thread) => {
+              const threadKey = [thread.guest1.id, thread.guest2.id].sort().join(":");
+              const isExpanded = expandedThread === threadKey;
+              const sendAsId = threadSendAs[threadKey] || thread.guest1.id;
+              const sendAsGuest = sendAsId === thread.guest1.id ? thread.guest1 : thread.guest2;
+              const receiveAsGuest = sendAsId === thread.guest1.id ? thread.guest2 : thread.guest1;
+
+              return (
+                <div key={threadKey} className="bg-white rounded-2xl shadow overflow-hidden">
+                  {/* Thread header */}
+                  <button
+                    onClick={() => setExpandedThread(isExpanded ? null : threadKey)}
+                    className="w-full px-4 py-4 flex items-center gap-3 text-left hover:bg-rose-50 transition-all"
+                  >
+                    <div className="flex -space-x-2">
+                      {[thread.guest1, thread.guest2].map((g) => (
+                        g.photoUrl ? (
+                          <img key={g.id} src={g.photoUrl} alt={g.name} className="w-9 h-9 rounded-full border-2 border-white object-cover" />
+                        ) : (
+                          <div key={g.id} className="w-9 h-9 rounded-full border-2 border-white bg-rose-100 flex items-center justify-center text-sm font-black text-rose-500">
+                            {g.name.charAt(0).toUpperCase()}
+                          </div>
+                        )
+                      ))}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-gray-800 text-sm">{thread.guest1.name} & {thread.guest2.name}</div>
+                      {thread.lastMessage ? (
+                        <div className="text-xs text-gray-400 truncate">{thread.lastMessage.content}</div>
+                      ) : (
+                        <div className="text-xs text-gray-300 italic">No messages yet</div>
+                      )}
+                    </div>
+                    <div className="text-xs text-rose-400 font-bold flex-shrink-0">
+                      {thread.messageCount} msg{thread.messageCount !== 1 ? "s" : ""} {isExpanded ? "▲" : "▼"}
+                    </div>
+                  </button>
+
+                  {/* Expanded thread */}
+                  {isExpanded && (
+                    <div className="border-t border-rose-50">
+                      {/* Messages list */}
+                      <div className="px-4 py-3 space-y-2 max-h-64 overflow-y-auto bg-gray-50">
+                        {thread.messages.length === 0 && (
+                          <p className="text-center text-gray-300 text-sm py-4">No messages yet</p>
+                        )}
+                        {thread.messages.map((msg) => {
+                          const senderName = msg.senderId === thread.guest1.id ? thread.guest1.name : thread.guest2.name;
+                          const isG1 = msg.senderId === thread.guest1.id;
+                          return (
+                            <div key={msg.id} className={`flex ${isG1 ? "justify-start" : "justify-end"}`}>
+                              <div className="max-w-[80%]">
+                                <div className="text-xs text-gray-400 mb-0.5">{senderName}</div>
+                                <div
+                                  className="px-3 py-2 rounded-xl text-sm"
+                                  style={isG1 ? { backgroundColor: "#f1f5f9", color: "#374151" } : { backgroundColor: "#f43f5e", color: "#fff" }}
+                                >
+                                  {msg.content}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Send as toggle + input */}
+                      <div className="px-4 py-3 border-t border-rose-50 bg-white">
+                        <div className="flex gap-2 mb-2">
+                          <span className="text-xs text-gray-400 font-semibold self-center">Send as:</span>
+                          {[thread.guest1, thread.guest2].map((g) => (
+                            <button
+                              key={g.id}
+                              onClick={() => setThreadSendAs((prev) => ({ ...prev, [threadKey]: g.id }))}
+                              className="text-xs font-bold px-3 py-1 rounded-full transition-all"
+                              style={sendAsId === g.id ? { backgroundColor: "#f43f5e", color: "#fff" } : { backgroundColor: "#f1f5f9", color: "#6b7280" }}
+                            >
+                              {g.name}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={threadInput[threadKey] || ""}
+                            onChange={(e) => setThreadInput((prev) => ({ ...prev, [threadKey]: e.target.value }))}
+                            onKeyDown={(e) => e.key === "Enter" && sendAdminMessage(threadKey, sendAsGuest.id, receiveAsGuest.id)}
+                            placeholder={`Message as ${sendAsGuest.name}...`}
+                            className="flex-1 px-3 py-2 rounded-lg border-2 border-gray-100 focus:border-rose-200 outline-none text-sm"
+                          />
+                          <button
+                            onClick={() => sendAdminMessage(threadKey, sendAsGuest.id, receiveAsGuest.id)}
+                            disabled={!threadInput[threadKey]?.trim()}
+                            className="px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-40 bg-rose-500"
+                          >
+                            Send
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

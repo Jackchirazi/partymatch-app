@@ -58,6 +58,12 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
     try {
       const res = await fetch(`/api/messages?guestId=${id}`);
       const data = await res.json();
+      // Sync fresh settings from server every poll
+      if (data.settings) {
+        const fresh = { ...defaultSettings, ...data.settings };
+        setSettings(fresh);
+        localStorage.setItem("partySettings", JSON.stringify(data.settings));
+      }
       if (data.partner) {
         setPartner(data.partner);
         setNoMatch(false);

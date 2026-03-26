@@ -13,8 +13,12 @@ export async function GET(
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
+    // Always fetch fresh party settings so clients stay in sync
+    const party = await prisma.party.findUnique({ where: { id: guest.partyId } });
+    const settings = party?.settings ? JSON.parse(party.settings) : null;
+
     if (!guest.matchedWith) {
-      return NextResponse.json({ matched: false });
+      return NextResponse.json({ matched: false, settings });
     }
 
     // Handle possible trio (comma-separated IDs)
@@ -31,6 +35,7 @@ export async function GET(
         photoUrl: m.photoUrl,
       })),
       matchNote: guest.matchNote,
+      settings,
     });
   } catch (error) {
     console.error("Get match error:", error);

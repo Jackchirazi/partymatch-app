@@ -44,6 +44,13 @@ export default function MatchPage({
         const res = await fetch(`/api/match/${guestId}`);
         const data = await res.json();
 
+        // Always sync fresh settings from server
+        if (data.settings) {
+          const fresh = { ...defaultSettings, ...data.settings };
+          setSettings(fresh);
+          localStorage.setItem("partySettings", JSON.stringify(data.settings));
+        }
+
         if (data.matched) {
           setMatchData(data as MatchData);
           setTimeout(() => {

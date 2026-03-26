@@ -11,8 +11,16 @@ export async function GET(req: NextRequest) {
     }
 
     const guest = await prisma.guest.findUnique({ where: { id: guestId } });
-    if (!guest || !guest.matchedWith) {
-      return NextResponse.json({ messages: [], partner: null });
+    if (!guest) {
+      return NextResponse.json({ messages: [], partner: null, settings: null });
+    }
+
+    // Always fetch fresh party settings
+    const party = await prisma.party.findUnique({ where: { id: guest.partyId } });
+    const settings = party?.settings ? JSON.parse(party.settings) : null;
+
+    if (!guest.matchedWith) {
+      return NextResponse.json({ messages: [], partner: null, settings });
     }
 
     // matchedWith can be "id" or "id1,id2" for trios — use first ID for 1-on-1 chat
@@ -37,6 +45,7 @@ export async function GET(req: NextRequest) {
         createdAt: m.createdAt,
       })),
       partner: partner ? { id: partner.id, name: partner.name, photoUrl: partner.photoUrl } : null,
+      settings,
     });
   } catch (error) {
     console.error("Get messages error:", error);
