@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { generateMatchReason } from "@/lib/anthropic";
+
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +21,27 @@ export async function POST(req: NextRequest) {
 
     if (action === "pair") {
       if (!guest1Id || !guest2Id) return NextResponse.json({ error: "Missing guest IDs" }, { status: 400 });
-      const note = "Handpicked by your host 🎯";
+
+      const [guest1, guest2] = await Promise.all([
+        prisma.guest.findUnique({ where: { id: guest1Id } }),
+        prisma.guest.findUnique({ where: { id: guest2Id } }),
+      ]);
+
+      if (!guest1 || !guest2) return NextResponse.json({ error: "Guest not found" }, { status: 404 });
+
+      const customQuestions = party.customQuestions ? JSON.parse(party.customQuestions) : undefined;
+
+      let note = "You two have a lot more in common than you think.";
+      try {
+        note = await generateMatchReason(
+          { id: guest1.id, name: guest1.name, gender: guest1.gender, answers: guest1.answers },
+          { id: guest2.id, name: guest2.name, gender: guest2.gender, answers: guest2.answers },
+          customQuestions
+        );
+      } catch {
+        // fallback silently — still pair them, just without AI reason
+      }
+
       await prisma.guest.update({ where: { id: guest1Id }, data: { matchedWith: guest2Id, matchNote: note } });
       await prisma.guest.update({ where: { id: guest2Id }, data: { matchedWith: guest1Id, matchNote: note } });
       return NextResponse.json({ success: true });

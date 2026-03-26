@@ -165,6 +165,63 @@ For a trio (odd number), the last entry gets an extra field:
   return JSON.parse(jsonMatch[0]) as MatchResult;
 }
 
+export async function generateMatchReason(
+  guest1: GuestData,
+  guest2: GuestData,
+  customQuestions?: Question[]
+): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
+
+  const questionList = customQuestions ?? defaultQuestions;
+
+  function profile(g: GuestData) {
+    const answers = JSON.parse(g.answers) as Record<string, string>;
+    const formatted = Object.entries(answers)
+      .map(([qId, answer]) => `  - ${buildQuestionText(qId, answer, questionList)}`)
+      .join("\n");
+    return `Name: ${g.name}\nGender: ${g.gender ?? "not specified"}\nAnswers:\n${formatted}`;
+  }
+
+  const prompt = `You are a sharp social connector at a party. Two people have been matched. Write a 1-2 sentence reason for this pairing that feels specific, social, and perceptive — like something a really observant friend would say about why these two would click.
+
+Rules:
+- Reference their actual answers. Do NOT be vague or generic.
+- No romantic clichés. No "you both value deep connections." No therapist-speak.
+- Make it feel like a real observation about their dynamic — what they'd actually be like together.
+- Keep it punchy: 1-2 sentences max.
+- Return ONLY the reason text, nothing else.
+
+Person 1:
+${profile(guest1)}
+
+Person 2:
+${profile(guest2)}`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 256,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Anthropic API error ${res.status}: ${errText}`);
+  }
+
+  const response = await res.json() as { content: Array<{ type: string; text?: string }> };
+  const textBlock = response.content.find((block) => block.type === "text");
+  return textBlock?.text?.trim() ?? "You two are going to have an interesting night.";
+}
+
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export async function improveQuestion(
