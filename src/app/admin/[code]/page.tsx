@@ -47,6 +47,11 @@ export default function AdminPage({
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"guests" | "questions" | "settings">("guests");
 
+  // Manual matching state
+  const [pairingMode, setPairingMode] = useState(false);
+  const [selectedGuest, setSelectedGuest] = useState<string | null>(null);
+  const [pairLoading, setPairLoading] = useState(false);
+
   // Settings state
   const [partySettings, setPartySettings] = useState<PartySettings>(defaultSettings);
   const [settingsDirty, setSettingsDirty] = useState(false);
@@ -288,6 +293,50 @@ export default function AdminPage({
     ));
   }
 
+  async function handlePairGuest(clickedId: string) {
+    if (!party) return;
+    if (!selectedGuest) {
+      setSelectedGuest(clickedId);
+      return;
+    }
+    if (selectedGuest === clickedId) {
+      setSelectedGuest(null);
+      return;
+    }
+    setPairLoading(true);
+    try {
+      await fetch("/api/admin/pair", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partyId: party.id, adminPassword: password, action: "pair", guest1Id: selectedGuest, guest2Id: clickedId }),
+      });
+      setSelectedGuest(null);
+      fetchGuests(password);
+    } finally {
+      setPairLoading(false);
+    }
+  }
+
+  async function handleUnpair(guestId: string) {
+    if (!party || !confirm("Unmatch this guest?")) return;
+    await fetch("/api/admin/pair", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ partyId: party.id, adminPassword: password, action: "unpair", guestId }),
+    });
+    fetchGuests(password);
+  }
+
+  async function handleFinalize() {
+    if (!party || !confirm("Reveal all matches to guests? They'll see their match on their phones.")) return;
+    await fetch("/api/admin/pair", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ partyId: party.id, adminPassword: password, action: "finalize" }),
+    });
+    fetchGuests(password);
+  }
+
   async function saveSettings() {
     if (!party) return;
     setSavingSettings(true);
@@ -403,13 +452,21 @@ export default function AdminPage({
 
           {matchError && <p className="text-red-500 text-sm text-center mb-2">{matchError}</p>}
           {matchSuccess && <p className="text-green-500 text-sm text-center mb-2">{matchSuccess}</p>}
-          <button
-            onClick={handleMatch}
-            disabled={matchLoading || guests.length < 2}
-            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold py-4 rounded-xl text-lg transition-all active:scale-95"
-          >
-            {matchLoading ? "AI is sparking connections... 🤔" : party?.matchingDone ? "🔁 Re-ignite the Sparks" : "✨ Ignite the Sparks"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleMatch}
+              disabled={matchLoading || guests.length < 2}
+              className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold py-4 rounded-xl text-base transition-all active:scale-95"
+            >
+              {matchLoading ? "Matching... 🤔" : party?.matchingDone ? "🔁 Re-run AI" : "✨ AI Match"}
+            </button>
+            <button
+              onClick={() => { setPairingMode((v) => !v); setSelectedGuest(null); setActiveTab("guests"); }}
+              className={`flex-1 font-bold py-4 rounded-xl text-base transition-all active:scale-95 ${pairingMode ? "bg-purple-500 hover:bg-purple-600 text-white" : "bg-white border-2 border-rose-200 text-rose-500 hover:bg-rose-50"}`}
+            >
+              {pairingMode ? "✓ Done Pairing" : "🎯 Manual Match"}
+            </button>
+          </div>
           {guests.length < 2 && <p className="text-rose-300 text-xs text-center mt-1">Need at least 2 guests</p>}
         </div>
 
@@ -438,6 +495,31 @@ export default function AdminPage({
         {/* GUESTS TAB */}
         {activeTab === "guests" && (
           <div className="space-y-3">
+            {/* Manual pairing instructions */}
+            {pairingMode && (
+              <div className="bg-purple-50 border-2 border-purple-200 rounded-2xl p-4">
+                {selectedGuest ? (
+                  <p className="text-purple-700 font-bold text-sm text-center">
+                    ✓ {guests.find((g) => g.id === selectedGuest)?.name} selected — now tap someone to pair them
+                  </p>
+                ) : (
+                  <p className="text-purple-600 font-semibold text-sm text-center">
+                    Tap any guest to select them, then tap another to pair them together
+                  </p>
+                )}
+                {pairLoading && <p className="text-purple-400 text-xs text-center mt-1">Pairing...</p>}
+                {/* Finalize button */}
+                {guests.some((g) => g.matchedWith) && !party?.matchingDone && (
+                  <button
+                    onClick={handleFinalize}
+                    className="w-full mt-3 bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl transition-all"
+                  >
+                    🎉 Reveal All Matches to Guests
+                  </button>
+                )}
+              </div>
+            )}
+
             {loading && <p className="text-rose-400 text-center py-4">Loading...</p>}
             {guests.length === 0 && !loading && (
               <div className="bg-white rounded-2xl shadow p-6 text-center">
@@ -447,6 +529,51 @@ export default function AdminPage({
             )}
             {guests.map((guest) => {
               const match = getMatchedGuest(guest.matchedWith);
+              const isSelected = selectedGuest === guest.id;
+              const isMatched = !!guest.matchedWith;
+
+              if (pairingMode) {
+                return (
+                  <div
+                    key={guest.id}
+                    onClick={() => !isMatched && handlePairGuest(guest.id)}
+                    className={`bg-white rounded-2xl shadow p-4 flex items-center gap-3 transition-all ${
+                      isMatched
+                        ? "opacity-60"
+                        : isSelected
+                        ? "ring-2 ring-purple-500 bg-purple-50 cursor-pointer"
+                        : "cursor-pointer hover:bg-purple-50 active:scale-95"
+                    }`}
+                  >
+                    {guest.photoUrl ? (
+                      <img src={guest.photoUrl} alt={guest.name} className="w-12 h-12 rounded-full object-cover border-2 border-rose-100 flex-shrink-0" />
+                    ) : (
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${isSelected ? "bg-purple-200 text-purple-700" : "bg-rose-100 text-rose-400"}`}>
+                        {guest.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="font-bold text-gray-800">{genderEmoji(guest.gender)} {guest.name}</p>
+                      {match ? (
+                        <p className="text-xs text-green-500 font-semibold">✓ Paired with {match.name}</p>
+                      ) : isSelected ? (
+                        <p className="text-xs text-purple-500 font-semibold">Selected — tap partner</p>
+                      ) : (
+                        <p className="text-xs text-gray-400">Tap to select</p>
+                      )}
+                    </div>
+                    {isMatched && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleUnpair(guest.id); }}
+                        className="text-xs text-red-400 hover:text-red-600 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-all"
+                      >
+                        Unpair
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <div key={guest.id} className="bg-white rounded-2xl shadow overflow-hidden">
                   <div
@@ -481,7 +608,7 @@ export default function AdminPage({
                       {match && (
                         <div className="bg-rose-50 rounded-xl p-3 mb-3">
                           <p className="text-rose-700 font-medium text-sm">🔥 Sparked with: {match.name}</p>
-                          {guest.matchNote && <p className="text-rose-500 text-xs mt-1 italic">"{guest.matchNote}"</p>}
+                          {guest.matchNote && <p className="text-rose-500 text-xs mt-1 italic">&quot;{guest.matchNote}&quot;</p>}
                         </div>
                       )}
                       <div className="space-y-2">
