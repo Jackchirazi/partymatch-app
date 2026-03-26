@@ -14,7 +14,7 @@ export default function QuestionnairePage({
   const router = useRouter();
 
   const [name, setName] = useState("");
-  const [gender, setGender] = useState<"male" | "female" | "other" | "">("");
+  const [gender, setGender] = useState<"male" | "female" | "">("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -224,15 +224,14 @@ export default function QuestionnairePage({
           </div>
 
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-black text-gray-800">One more thing</h1>
+            <h1 className="text-2xl font-black text-gray-800">Are you a boy or girl?</h1>
             <p className="text-gray-400 text-sm mt-1">This helps us find your {settings.matchLabel}</p>
           </div>
 
           <div className="space-y-3 mb-6">
             {[
-              { value: "male", label: "Male", emoji: "👨" },
-              { value: "female", label: "Female", emoji: "👩" },
-              { value: "other", label: "Other / Prefer not to say", emoji: "🌈" },
+              { value: "male", label: "Boy", emoji: "👨" },
+              { value: "female", label: "Girl", emoji: "👩" },
             ].map((opt) => (
               <button
                 key={opt.value}
