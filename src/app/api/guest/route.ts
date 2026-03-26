@@ -92,6 +92,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Delete messages first (no cascade in schema)
+    await prisma.message.deleteMany({
+      where: { OR: [{ senderId: id }, { receiverId: id }] },
+    });
     await prisma.guest.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

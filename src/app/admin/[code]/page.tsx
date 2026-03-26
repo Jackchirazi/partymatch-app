@@ -70,6 +70,7 @@ export default function AdminPage({
   const [partySettings, setPartySettings] = useState<PartySettings>(defaultSettings);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [saveSettingsStatus, setSaveSettingsStatus] = useState<"idle" | "success" | "error">("idle");
 
   // Question editor state
   const [questions, setQuestions] = useState<Question[]>(defaultQuestions);
@@ -178,10 +179,11 @@ export default function AdminPage({
 
   async function handleRemoveGuest(guestId: string) {
     if (!confirm("Remove this guest?")) return;
-    await fetch(`/api/guest?id=${guestId}`, {
+    const res = await fetch(`/api/guest?id=${guestId}`, {
       method: "DELETE",
       headers: { "x-admin-password": password },
     });
+    if (!res.ok) alert("Failed to remove guest. Try again.");
     fetchGuests(password);
   }
 
@@ -398,13 +400,22 @@ export default function AdminPage({
   async function saveSettings() {
     if (!party) return;
     setSavingSettings(true);
+    setSaveSettingsStatus("idle");
     try {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ partyId: party.id, adminPassword: password, settings: partySettings }),
       });
-      if (res.ok) setSettingsDirty(false);
+      if (res.ok) {
+        setSettingsDirty(false);
+        setSaveSettingsStatus("success");
+        setTimeout(() => setSaveSettingsStatus("idle"), 3000);
+      } else {
+        setSaveSettingsStatus("error");
+      }
+    } catch {
+      setSaveSettingsStatus("error");
     } finally {
       setSavingSettings(false);
     }
@@ -1049,8 +1060,15 @@ export default function AdminPage({
               {savingSettings ? "Saving..." : settingsDirty ? "Save Settings" : "Settings Saved ✓"}
             </button>
 
+            {saveSettingsStatus === "success" && (
+              <p className="text-green-600 text-sm font-semibold text-center">✓ Saved! Guests will see changes within seconds.</p>
+            )}
+            {saveSettingsStatus === "error" && (
+              <p className="text-red-500 text-sm font-semibold text-center">Save failed — check your connection and try again.</p>
+            )}
+
             <p className="text-xs text-rose-300 text-center">
-              Settings apply to new guests joining — tell existing guests to refresh if needed
+              Settings sync to guests automatically — no refresh needed.
             </p>
           </div>
         )}

@@ -76,6 +76,15 @@ export default function MatchPage({
   const theme = getTheme(settings.theme);
   const { matchLabel, blindMode } = settings;
 
+  function handleStartOver() {
+    if (!confirm("This will clear your session. You'll need to re-join with your party code.")) return;
+    localStorage.removeItem("guestId");
+    localStorage.removeItem("guestName");
+    localStorage.removeItem("partyId");
+    localStorage.removeItem("partySettings");
+    router.push("/join");
+  }
+
   if (!matchData || !matchData.matched) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6">
@@ -89,6 +98,9 @@ export default function MatchPage({
             <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: theme.primary, animationDelay: "150ms" }} />
             <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: theme.text, animationDelay: "300ms" }} />
           </div>
+          <button onClick={handleStartOver} className="mt-8 text-xs text-gray-300 hover:text-gray-400 underline">
+            Wrong name? Start over
+          </button>
         </div>
       </main>
     );
