@@ -30,6 +30,7 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
   const router = useRouter();
 
   const [guestId, setGuestId] = useState("");
+  const [guestName, setGuestName] = useState("");
   const [settings, setSettings] = useState<PartySettings>(defaultSettings);
   const [messages, setMessages] = useState<Message[]>([]);
   const [partner, setPartner] = useState<Partner | null>(null);
@@ -47,6 +48,7 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
       return;
     }
     setGuestId(id);
+    setGuestName(localStorage.getItem("guestName") || "You");
 
     const stored = localStorage.getItem("partySettings");
     if (stored) {
@@ -154,6 +156,10 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
           <div className="font-black text-gray-800 text-sm">{blindMode ? "???" : partner?.name}</div>
           <div className="text-xs" style={{ color: theme.textLight }}>Your {matchLabel}</div>
         </div>
+        <div className="ml-auto text-right">
+          <div className="text-xs text-gray-400">You</div>
+          <div className="text-xs font-bold text-gray-600">{guestName}</div>
+        </div>
       </div>
 
       {/* Messages */}
@@ -164,10 +170,17 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
             Say hi to your {matchLabel}!
           </div>
         )}
-        {messages.map((msg) => {
+        {messages.map((msg, index) => {
           const isOwn = msg.senderId === guestId;
+          const isFirstInRun = index === 0 || messages[index - 1].senderId !== msg.senderId;
+          const senderName = isOwn ? guestName : (blindMode ? "???" : partner?.name);
           return (
-            <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+            <div key={msg.id} className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
+              {isFirstInRun && (
+                <div className="text-xs font-semibold text-gray-400 mb-1 px-1">
+                  {senderName}
+                </div>
+              )}
               <div className="max-w-[75%]">
                 <div
                   className="px-4 py-2.5 rounded-2xl text-sm font-medium break-words"
