@@ -453,6 +453,15 @@ export default function AdminPage({
     }
   }
 
+  async function deleteMessage(messageId: string) {
+    if (!party) return;
+    await fetch(`/api/admin/messages?messageId=${messageId}&partyId=${party.id}`, {
+      method: "DELETE",
+      headers: { "x-admin-password": password },
+    });
+    fetchThreads();
+  }
+
   async function sendAdminMessage(threadKey: string, senderId: string, receiverId: string) {
     const content = threadInput[threadKey]?.trim();
     if (!content || !party) return;
@@ -1169,7 +1178,14 @@ export default function AdminPage({
                           const senderName = msg.senderId === thread.guest1.id ? thread.guest1.name : thread.guest2.name;
                           const isG1 = msg.senderId === thread.guest1.id;
                           return (
-                            <div key={msg.id} className={`flex ${isG1 ? "justify-start" : "justify-end"}`}>
+                            <div key={msg.id} className={`flex items-start gap-1 ${isG1 ? "justify-start" : "justify-end flex-row-reverse"}`}>
+                              <button
+                                onClick={() => deleteMessage(msg.id)}
+                                className="text-gray-300 hover:text-red-400 text-xs px-1 py-0.5 flex-shrink-0 mt-4"
+                                title="Delete message"
+                              >
+                                ✕
+                              </button>
                               <div className="max-w-[80%]">
                                 <div className="text-xs text-gray-400 mb-0.5">{senderName}</div>
                                 <div

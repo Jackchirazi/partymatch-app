@@ -92,6 +92,32 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// DELETE — admin silently deletes a message by ID
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const messageId = searchParams.get("messageId");
+    const partyId = searchParams.get("partyId");
+    const adminPassword = req.headers.get("x-admin-password");
+
+    if (!messageId || !partyId || !adminPassword) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    const party = await prisma.party.findUnique({ where: { id: partyId } });
+    if (!party) return NextResponse.json({ error: "Party not found" }, { status: 404 });
+
+    const valid = await bcrypt.compare(adminPassword, party.adminPassword);
+    if (!valid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    await prisma.message.delete({ where: { id: messageId } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Admin message DELETE error:", error);
+    return NextResponse.json({ error: "Failed to delete message" }, { status: 500 });
+  }
+}
+
 // POST — admin sends a message as one of the guests in a thread
 export async function POST(req: NextRequest) {
   try {
