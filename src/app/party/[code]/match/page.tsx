@@ -35,7 +35,10 @@ export default function MatchPage({
     }
 
     const guestId = localStorage.getItem("guestId");
-    if (!guestId) return;
+    if (!guestId) {
+      router.push("/login");
+      return;
+    }
 
     let timeoutId: ReturnType<typeof setTimeout>;
 

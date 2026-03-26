@@ -36,6 +36,7 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
   const [partner, setPartner] = useState<Partner | null>(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const [loading, setLoading] = useState(true);
   const [noMatch, setNoMatch] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -92,6 +93,7 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
   async function sendMessage() {
     if (!input.trim() || sending || !guestId) return;
     setSending(true);
+    setSendError("");
     const content = input.trim();
     setInput("");
 
@@ -104,8 +106,14 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
       if (res.ok) {
         const msg = await res.json();
         setMessages((prev) => [...prev, msg]);
+      } else {
+        setSendError("Failed to send. Try again.");
+        setInput(content);
       }
-    } catch {}
+    } catch {
+      setSendError("Failed to send. Check your connection.");
+      setInput(content);
+    }
     setSending(false);
   }
 
@@ -203,6 +211,11 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
       </div>
 
       {/* Input bar */}
+      {sendError && (
+        <div className="bg-red-50 border-t border-red-100 px-4 py-2 text-red-500 text-xs font-semibold text-center flex-shrink-0">
+          {sendError}
+        </div>
+      )}
       <div className="bg-white border-t border-gray-100 px-4 py-3 flex gap-2 flex-shrink-0">
         <input
           type="text"

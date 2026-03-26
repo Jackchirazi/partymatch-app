@@ -71,6 +71,7 @@ export default function AdminPage({
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [saveSettingsStatus, setSaveSettingsStatus] = useState<"idle" | "success" | "error">("idle");
+  const [saveQuestionsStatus, setSaveQuestionsStatus] = useState<"idle" | "success" | "error">("idle");
 
   // Question editor state
   const [questions, setQuestions] = useState<Question[]>(defaultQuestions);
@@ -157,6 +158,10 @@ export default function AdminPage({
 
   async function handleMatch() {
     if (!party) return;
+    const alreadyMatched = guests.some((g) => g.matchedWith);
+    if (alreadyMatched) {
+      if (!confirm("⚠️ This will clear ALL existing matches and re-run AI matching. Any manual pairings will be lost. Continue?")) return;
+    }
     setMatchLoading(true);
     setMatchError("");
     setMatchSuccess("");
@@ -252,13 +257,20 @@ export default function AdminPage({
   async function saveQuestions() {
     if (!party) return;
     setSavingQuestions(true);
+    setSaveQuestionsStatus("idle");
     try {
       const res = await fetch("/api/admin/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ partyId: party.id, adminPassword: password, questions }),
       });
-      if (res.ok) setQuestionsDirty(false);
+      if (res.ok) {
+        setQuestionsDirty(false);
+        setSaveQuestionsStatus("success");
+        setTimeout(() => setSaveQuestionsStatus("idle"), 3000);
+      } else {
+        setSaveQuestionsStatus("error");
+      }
     } finally {
       setSavingQuestions(false);
     }
@@ -336,11 +348,15 @@ export default function AdminPage({
     }
     setPairLoading(true);
     try {
-      await fetch("/api/admin/pair", {
+      const res = await fetch("/api/admin/pair", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ partyId: party.id, adminPassword: password, action: "pair", guest1Id: selectedGuest, guest2Id: clickedId }),
       });
+      if (!res.ok) {
+        const d = await res.json();
+        alert("Pairing failed: " + (d.error || "Try again"));
+      }
       setSelectedGuest(null);
       fetchGuests(password);
     } finally {
@@ -350,21 +366,23 @@ export default function AdminPage({
 
   async function handleUnpair(guestId: string) {
     if (!party || !confirm("Unmatch this guest?")) return;
-    await fetch("/api/admin/pair", {
+    const res = await fetch("/api/admin/pair", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ partyId: party.id, adminPassword: password, action: "unpair", guestId }),
     });
+    if (!res.ok) alert("Unpair failed. Try again.");
     fetchGuests(password);
   }
 
   async function handleFinalize() {
     if (!party || !confirm("Reveal all matches to guests? They'll see their match on their phones.")) return;
-    await fetch("/api/admin/pair", {
+    const res = await fetch("/api/admin/pair", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ partyId: party.id, adminPassword: password, action: "finalize" }),
     });
+    if (!res.ok) alert("Finalize failed. Try again.");
     fetchGuests(password);
   }
 
@@ -438,13 +456,17 @@ export default function AdminPage({
   async function sendAdminMessage(threadKey: string, senderId: string, receiverId: string) {
     const content = threadInput[threadKey]?.trim();
     if (!content || !party) return;
-    setThreadInput((prev) => ({ ...prev, [threadKey]: "" }));
-    await fetch("/api/admin/messages", {
+    const res = await fetch("/api/admin/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ partyId: party.id, adminPassword: password, senderId, receiverId, content }),
     });
-    fetchThreads();
+    if (res.ok) {
+      setThreadInput((prev) => ({ ...prev, [threadKey]: "" }));
+      fetchThreads();
+    } else {
+      alert("Failed to send message. Try again.");
+    }
   }
 
   function getMatchedGuest(matchedWith: string | null): Guest | undefined {
@@ -872,6 +894,13 @@ export default function AdminPage({
                 Reset to defaults
               </button>
             </div>
+
+            {saveQuestionsStatus === "success" && (
+              <p className="text-green-600 text-sm font-semibold text-center">✓ Questions saved!</p>
+            )}
+            {saveQuestionsStatus === "error" && (
+              <p className="text-red-500 text-sm font-semibold text-center">Save failed — try again.</p>
+            )}
 
             {/* Question list */}
             <div className="space-y-3">
