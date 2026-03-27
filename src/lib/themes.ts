@@ -87,6 +87,7 @@ export type PartySettings = {
   matchLabel: string;
   theme: ThemeKey;
   blindMode: boolean;
+  announcement: string;
 };
 
 export const defaultSettings: PartySettings = {
@@ -95,6 +96,7 @@ export const defaultSettings: PartySettings = {
   matchLabel: "Secret Flame",
   theme: "pink",
   blindMode: false,
+  announcement: "",
 };
 
 export function getTheme(key: string): Theme {

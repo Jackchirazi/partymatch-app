@@ -77,7 +77,7 @@ export default function MatchPage({
   }, []);
 
   const theme = getTheme(settings.theme);
-  const { matchLabel, blindMode } = settings;
+  const { matchLabel, blindMode, announcement } = settings;
 
   function handleStartOver() {
     if (!confirm("This will clear your session. You'll need to re-join with your party code.")) return;
@@ -91,6 +91,12 @@ export default function MatchPage({
   if (!matchData || !matchData.matched) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6">
+        {announcement && (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 text-center" style={{ backgroundColor: "rgba(0,0,0,0.88)" }}>
+            <div className="text-6xl mb-6 animate-bounce">🎉</div>
+            <p className="text-white text-3xl font-black leading-tight max-w-xs">{announcement}</p>
+          </div>
+        )}
         <div className="text-center animate-fade-in">
           <div className="text-7xl mb-6 animate-float">🎉</div>
           <h1 className="text-2xl font-black mb-2" style={{ color: theme.text }}>You&apos;re in, {guestName}!</h1>
@@ -114,6 +120,12 @@ export default function MatchPage({
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6">
+      {announcement && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 text-center" style={{ backgroundColor: "rgba(0,0,0,0.88)" }}>
+          <div className="text-6xl mb-6 animate-bounce">🎉</div>
+          <p className="text-white text-3xl font-black leading-tight max-w-xs">{announcement}</p>
+        </div>
+      )}
       {showReveal && blindMode && (
         <div className="text-center animate-pop">
           <div className="text-5xl mb-2 animate-float">🕵️</div>

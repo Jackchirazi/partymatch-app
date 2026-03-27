@@ -118,7 +118,7 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
   }
 
   const theme = getTheme(settings.theme);
-  const { matchLabel, blindMode } = settings;
+  const { matchLabel, blindMode, announcement } = settings;
 
   if (loading) {
     return (
@@ -146,6 +146,12 @@ export default function ChatPage({ params }: { params: Promise<{ code: string }>
 
   return (
     <main className="min-h-screen flex flex-col" style={{ maxHeight: "100dvh" }}>
+      {announcement && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 text-center" style={{ backgroundColor: "rgba(0,0,0,0.88)" }}>
+          <div className="text-6xl mb-6 animate-bounce">🎉</div>
+          <p className="text-white text-3xl font-black leading-tight max-w-xs">{announcement}</p>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white shadow-sm px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-600 text-lg">←</button>

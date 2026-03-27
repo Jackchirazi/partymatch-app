@@ -66,6 +66,8 @@ export default function AdminPage({
   const [selectedGuest, setSelectedGuest] = useState<string | null>(null);
   const [pairLoading, setPairLoading] = useState(false);
 
+  const [announcementText, setAnnouncementText] = useState("");
+
   // Settings state
   const [partySettings, setPartySettings] = useState<PartySettings>(defaultSettings);
   const [settingsDirty, setSettingsDirty] = useState(false);
@@ -453,6 +455,29 @@ export default function AdminPage({
     }
   }
 
+  async function sendAnnouncement() {
+    if (!party || !announcementText.trim()) return;
+    const updated = { ...partySettings, announcement: announcementText.trim() };
+    await fetch("/api/admin/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ partyId: party.id, adminPassword: password, settings: updated }),
+    });
+    setPartySettings(updated);
+    setAnnouncementText("");
+  }
+
+  async function clearAnnouncement() {
+    if (!party) return;
+    const updated = { ...partySettings, announcement: "" };
+    await fetch("/api/admin/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ partyId: party.id, adminPassword: password, settings: updated }),
+    });
+    setPartySettings(updated);
+  }
+
   async function deleteMessage(messageId: string) {
     if (!party) return;
     await fetch(`/api/admin/messages?messageId=${messageId}&partyId=${party.id}`, {
@@ -627,6 +652,42 @@ export default function AdminPage({
         {/* GUESTS TAB */}
         {activeTab === "guests" && (
           <div className="space-y-3">
+            {/* Broadcast Announcement */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+              <div className="text-sm font-black text-gray-700">📣 Announce to all phones</div>
+              {partySettings.announcement ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2 text-sm font-semibold text-yellow-800 truncate">
+                    Live: {partySettings.announcement}
+                  </div>
+                  <button
+                    onClick={clearAnnouncement}
+                    className="bg-red-100 hover:bg-red-200 text-red-600 font-bold px-3 py-2 rounded-xl text-sm transition-all"
+                  >
+                    ✕ Clear
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={announcementText}
+                    onChange={(e) => setAnnouncementText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendAnnouncement()}
+                    placeholder="e.g. Thank you for coming!"
+                    className="flex-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-rose-300 outline-none text-sm"
+                  />
+                  <button
+                    onClick={sendAnnouncement}
+                    disabled={!announcementText.trim()}
+                    className="bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all"
+                  >
+                    Send
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Manual pairing instructions */}
             {pairingMode && (
               <div className="bg-purple-50 border-2 border-purple-200 rounded-2xl p-4">
